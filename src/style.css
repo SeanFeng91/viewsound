@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* 专门为Plotly图表定制的样式 */
+/* 确保图表容器有固定高度 */
+#waveform-plot,
+#frequency-plot,
+#resonance-plot {
+  height: 320px !important;
+  width: 100% !important;
+  min-height: 320px !important;
+  display: block !important;
+}
+
+/* 强制Plotly内部容器保持正确尺寸 */
+.plot-container.plotly {
+  height: 100% !important;
+  width: 100% !important;
+  min-height: 320px !important;
+  display: block !important;
+}
+
+/* 确保Plotly SVG容器不被压缩 */
+.plotly .svg-container,
+.main-svg {
+  height: 100% !important;
+  width: 100% !important;
+  min-height: 320px !important;
+}
+
+/* 防止图表内容被意外覆盖或隐藏 */
+.js-plotly-plot .plotly {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* 确保图表响应式调整时保持高度 */
+.js-plotly-plot .plot-container {
+  height: 100% !important;
+  width: 100% !important;
+} 
