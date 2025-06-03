@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 专门为Plotly图表定制的样式 */
+/* D3.js图表样式 - 已替换原有的Plotly样式 */
 /* 确保图表容器有固定高度 */
 #waveform-plot,
 #frequency-plot,
@@ -9,34 +9,6 @@
   width: 100% !important;
   min-height: 320px !important;
   display: block !important;
-}
-
-/* 强制Plotly内部容器保持正确尺寸 */
-.plot-container.plotly {
-  height: 100% !important;
-  width: 100% !important;
-  min-height: 320px !important;
-  display: block !important;
-}
-
-/* 确保Plotly SVG容器不被压缩 */
-.plotly .svg-container,
-.main-svg {
-  height: 100% !important;
-  width: 100% !important;
-  min-height: 320px !important;
-}
-
-/* 防止图表内容被意外覆盖或隐藏 */
-.js-plotly-plot .plotly {
-  height: 100% !important;
-  width: 100% !important;
-}
-
-/* 确保图表响应式调整时保持高度 */
-.js-plotly-plot .plot-container {
-  height: 100% !important;
-  width: 100% !important;
 }
 
 /* 全局下拉菜单样式 - 确保所有下拉菜单都能正确显示 */
@@ -77,4 +49,228 @@ select.dark-select-options option:selected {
   background-color: #4299e1 !important;
   color: #ffffff !important;
   font-weight: bold !important;
+}
+
+/* 应用的全局样式，确保主题一致性 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #0f0f23;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+#app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* 图表容器样式 */
+.chart-container {
+  width: 100%;
+  height: auto;
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #1f2937;
+  border-radius: 8px;
+  border: 1px solid #374151;
+}
+
+/* 全局下拉菜单样式 */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #374151 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #6b7280 !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e2e8f0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+  background-size: 16px !important;
+  padding-right: 30px !important;
+}
+
+/* 深色主题下拉菜单 */
+select.dark-select-options {
+  background-color: #2d3748 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #4a5568 !important;
+}
+
+select.dark-select-options option {
+  background-color: #2d3748 !important;
+  color: #e2e8f0 !important;
+  padding: 8px 12px !important;
+}
+
+select.dark-select-options option:focus {
+  background-color: #4299e1 !important;
+  color: #ffffff !important;
+}
+
+select.dark-select-options option:checked {
+  background-color: #4299e1 !important;
+  color: #ffffff !important;
+}
+
+select.dark-select-options option:hover {
+  background-color: #4a5568 !important;
+  color: #e2e8f0 !important;
+}
+
+/* D3.js 图表样式 */
+.chart-container svg {
+  background-color: #1f2937;
+  border-radius: 6px;
+}
+
+/* D3 坐标轴样式 */
+.chart-container .axis path,
+.chart-container .axis line {
+  fill: none;
+  stroke: #6b7280;
+  shape-rendering: crispEdges;
+}
+
+.chart-container .axis text {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  fill: #d1d5db;
+}
+
+/* D3 网格样式 */
+.chart-container .grid line {
+  stroke: #374151;
+  stroke-dasharray: 2,2;
+  stroke-opacity: 0.7;
+}
+
+.chart-container .grid path {
+  stroke-width: 0;
+}
+
+/* D3 数据点样式 */
+.chart-container .data-point {
+  transition: all 0.2s ease;
+}
+
+.chart-container .data-point:hover {
+  stroke-width: 2 !important;
+  r: 6 !important;
+}
+
+/* D3 线条样式 */
+.chart-container .connection-line {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* D3 面积图样式 */
+.chart-container .waveform-area {
+  opacity: 0.6;
+}
+
+/* D3 图例样式 */
+.chart-container .legend text {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  fill: #d1d5db;
+}
+
+/* D3 标题样式 */
+.chart-container .chart-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  fill: #f3f4f6;
+}
+
+/* D3 坐标轴标签样式 */
+.chart-container .axis-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  fill: #d1d5db;
+}
+
+/* 响应式图表 */
+@media (max-width: 768px) {
+  .chart-container {
+    padding: 5px;
+  }
+  
+  .chart-container .axis text {
+    font-size: 10px;
+  }
+  
+  .chart-container .chart-title {
+    font-size: 12px;
+  }
+  
+  .chart-container .axis-label {
+    font-size: 11px;
+  }
 } 

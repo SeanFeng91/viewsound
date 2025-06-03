@@ -59,7 +59,7 @@ async function initializeVibrationEngine() {
     
     // 外部库已在main.js中确保加载完成
     console.log('THREE.js版本:', THREE.REVISION)
-    console.log('Plotly版本:', Plotly.version)
+    console.log('D3.js版本:', d3.version)
     
     // 动态导入我们的JavaScript模块
     const { MaterialProperties } = await import('./utils/materials.js')
@@ -506,12 +506,10 @@ function convertToCSV(data) {
                   </select>
                 </div>
               </div>
-              <div 
-                ref="waveformPlot"
-                id="waveform-plot"
-                class="h-80 bg-white/5 rounded-lg border border-white/10 overflow-hidden"
-              >
-                <!-- Plotly 图表将在此处渲染 -->
+              <div class="chart-container">
+                <div id="waveform-plot" class="w-full h-80">
+                  <!-- D3.js 图表将在此处渲染 -->
+                </div>
               </div>
               <p class="text-xs text-gray-300 mt-2">
                 📈 显示选定杆件的实时振动位移随时间变化，展示振动的时域特性
@@ -521,12 +519,10 @@ function convertToCSV(data) {
             <!-- 频率图 -->
             <div class="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
               <h4 class="text-md font-medium text-white mb-3">各杆件响应强度</h4>
-              <div 
-                ref="frequencyPlot"
-                id="frequency-plot"
-                class="h-80 bg-white/5 rounded-lg border border-white/10 overflow-hidden"
-              >
-                <!-- Plotly 图表将在此处渲染 -->
+              <div class="chart-container">
+                <div id="frequency-plot" class="w-full h-80">
+                  <!-- D3.js 图表将在此处渲染 -->
+                </div>
               </div>
               <p class="text-xs text-gray-300 mt-2">
                 📊 显示各杆件在当前激励频率下的放大因子。绿点为正常响应，红点为共振状态
@@ -535,14 +531,12 @@ function convertToCSV(data) {
           </div>
 
           <!-- 共振分析图 -->
-          <div class="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
-            <h4 class="text-md font-medium text-white mb-3">共振分析</h4>
-            <div 
-              ref="resonancePlot"
-              id="resonance-plot"
-              class="h-80 bg-white/5 rounded-lg border border-white/10 overflow-hidden"
-            >
-              <!-- 共振分析图表 -->
+          <div>
+            <h3 class="text-base font-semibold mb-3 text-blue-400">共振分析</h3>
+            <div class="chart-container">
+              <div id="resonance-plot" class="w-full h-80">
+                <!-- D3.js 图表将在此处渲染 -->
+              </div>
             </div>
             <p class="text-xs text-gray-300 mt-2">
               🎯 展示杆长与固有频率的关系：蓝点为各杆件的第一阶固有频率，黄线为当前激励频率。

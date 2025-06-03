@@ -1,20 +1,24 @@
 /**
- * 可视化模块
+ * 可视化模块 - 基于D3.js
  * 负责绘制波形图、频谱图等数据可视化
  */
 
 class Visualization {
     constructor() {
-        this.waveformPlot = null;
-        this.frequencyPlot = null;
-        this.resonancePlot = null; // 添加对共振图的引用
         this.waveformContainer = 'waveform-plot';
         this.frequencyContainer = 'frequency-plot';
-        this.resonanceContainer = 'resonance-plot'; // 添加共振图容器ID
+        this.resonanceContainer = 'resonance-plot';
         this.timeWindow = 10; // 10秒时间窗口
         this.waveformData = new Map(); // 存储每个杆件的波形数据
         this.currentSelectedRod = 0; // 当前选中的杆件
         this.maxDataPoints = 1000; // 最大数据点数量，避免性能问题
+
+        // 图表尺寸配置
+        this.chartConfig = {
+            width: 600,
+            height: 280,
+            margin: { top: 40, right: 60, bottom: 60, left: 80 }
+        };
 
         // 图表节流控制
         this.lastPlotUpdateTime = { 
@@ -22,7 +26,12 @@ class Visualization {
             frequency: 0, 
             resonance: 0 
         };
-        this.plotUpdateInterval = 200; // ms, 图表更新最小间隔 (5 FPS for charts)
+        this.plotUpdateInterval = 100; // ms, 图表更新间隔
+
+        // D3图表实例
+        this.waveformChart = null;
+        this.frequencyChart = null;
+        this.resonanceChart = null;
     }
 
     /**
@@ -43,304 +52,592 @@ class Visualization {
     }
 
     /**
-     * 初始化波形图
+     * 初始化波形图 - D3.js实现
      */
     initWaveformPlot() {
-        const layout = {
-            title: {
-                text: '波形图',
-                font: { color: '#f3f4f6', size: 14 }
-            },
-            xaxis: {
-                title: '时间 (秒)',
-                color: '#d1d5db',
-                gridcolor: '#374151',
-                showgrid: true,
-                range: [0, this.timeWindow], // 固定10秒时间窗口
-                autorange: false // 禁用自动范围调整
-            },
-            yaxis: {
-                title: '幅度',
-                color: '#d1d5db',
-                gridcolor: '#374151',
-                showgrid: true,
-                autorange: true
-            },
-            plot_bgcolor: '#1f2937',
-            paper_bgcolor: '#1f2937',
-            font: { color: '#f3f4f6' },
-            margin: { l: 50, r: 30, t: 40, b: 40 },
-            showlegend: false
+        const container = d3.select(`#${this.waveformContainer}`);
+        container.selectAll('*').remove(); // 清空现有内容
+        
+        const { width, height, margin } = this.chartConfig;
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+
+        // 创建SVG
+        const svg = container
+            .append('svg')
+            .attr('width', '100%')
+            .attr('height', height)
+            .attr('viewBox', `0 0 ${width} ${height}`)
+            .attr('preserveAspectRatio', 'xMidYMid meet');
+
+        // 创建渐变定义
+        const defs = svg.append('defs');
+        const gradient = defs.append('linearGradient')
+            .attr('id', 'waveform-gradient')
+            .attr('gradientUnits', 'userSpaceOnUse')
+            .attr('x1', 0).attr('y1', innerHeight)
+            .attr('x2', 0).attr('y2', 0);
+        
+        gradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', '#3b82f6')
+            .attr('stop-opacity', 0.1);
+        
+        gradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', '#3b82f6')
+            .attr('stop-opacity', 0.8);
+
+        // 主绘图区域
+        const g = svg.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // 创建比例尺
+        const xScale = d3.scaleLinear()
+            .domain([0, this.timeWindow])
+            .range([0, innerWidth]);
+
+        const yScale = d3.scaleLinear()
+            .domain([-0.01, 0.01])
+            .range([innerHeight, 0]);
+
+        // 创建坐标轴
+        const xAxis = d3.axisBottom(xScale)
+            .tickSize(-innerHeight)
+            .tickFormat(d => `${d}s`);
+
+        const yAxis = d3.axisLeft(yScale)
+            .tickSize(-innerWidth)
+            .tickFormat(d => `${(d * 1000).toFixed(1)}mm`);
+
+        // 添加网格和坐标轴
+        g.append('g')
+            .attr('class', 'grid')
+            .attr('transform', `translate(0,${innerHeight})`)
+            .call(xAxis)
+            .selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+
+        g.append('g')
+            .attr('class', 'grid')
+            .call(yAxis)
+            .selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+
+        // 添加坐标轴标签
+        g.append('text')
+            .attr('class', 'axis-label')
+            .attr('text-anchor', 'middle')
+            .attr('x', innerWidth / 2)
+            .attr('y', innerHeight + 45)
+            .style('fill', '#d1d5db')
+            .style('font-size', '12px')
+            .text('时间 (秒)');
+
+        g.append('text')
+            .attr('class', 'axis-label')
+            .attr('text-anchor', 'middle')
+            .attr('transform', 'rotate(-90)')
+            .attr('y', -55)
+            .attr('x', -innerHeight / 2)
+            .style('fill', '#d1d5db')
+            .style('font-size', '12px')
+            .text('振动幅度 (mm)');
+
+        // 添加标题
+        g.append('text')
+            .attr('class', 'chart-title')
+            .attr('text-anchor', 'middle')
+            .attr('x', innerWidth / 2)
+            .attr('y', -15)
+            .style('fill', '#f3f4f6')
+            .style('font-size', '14px')
+            .style('font-weight', 'bold')
+            .text('振动波形');
+
+        // 创建线条生成器
+        const line = d3.line()
+            .x(d => xScale(d.time))
+            .y(d => yScale(d.amplitude))
+            .curve(d3.curveMonotoneX);
+
+        // 添加路径容器
+        g.append('path')
+            .attr('class', 'waveform-line')
+            .style('fill', 'none')
+            .style('stroke', '#60a5fa')
+            .style('stroke-width', 2);
+
+        // 添加面积图
+        const area = d3.area()
+            .x(d => xScale(d.time))
+            .y0(innerHeight)
+            .y1(d => yScale(d.amplitude))
+            .curve(d3.curveMonotoneX);
+
+        g.append('path')
+            .attr('class', 'waveform-area')
+            .style('fill', 'url(#waveform-gradient)');
+
+        // 保存图表引用
+        this.waveformChart = {
+            svg, g, xScale, yScale, line, area, innerWidth, innerHeight
         };
-
-        const config = {
-            displayModeBar: false,
-            responsive: true
-        };
-
-        const data = [{
-            x: [],
-            y: [],
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#60a5fa', width: 2 },
-            name: '波形'
-        }];
-
-        Plotly.newPlot(this.waveformContainer, data, layout, config);
-        const waveformPlotDiv = document.getElementById(this.waveformContainer);
-        if (waveformPlotDiv) {
-            // 强制设置容器样式，防止被压缩
-            waveformPlotDiv.style.height = '320px';
-            waveformPlotDiv.style.minHeight = '320px';
-            waveformPlotDiv.style.width = '100%';
-            waveformPlotDiv.style.display = 'block';
-            
-            // 延迟调用resize确保尺寸正确
-            setTimeout(() => {
-                Plotly.Plots.resize(waveformPlotDiv);
-            }, 50);
-        }
     }
 
     /**
-     * 初始化频谱图
+     * 初始化频率响应图 - D3.js实现
      */
     initFrequencyPlot() {
-        const layout = {
-            title: {
-                text: '各杆件响应强度',
-                font: { color: '#f3f4f6', size: 14 }
-            },
-            xaxis: {
-                title: '杆件长度 (mm)',
-                color: '#d1d5db',
-                gridcolor: '#374151',
-                showgrid: true,
-                autorange: true
-            },
-            yaxis: {
-                title: '放大因子',
-                color: '#d1d5db',
-                gridcolor: '#374151',
-                showgrid: true,
-                autorange: true
-            },
-            plot_bgcolor: '#1f2937',
-            paper_bgcolor: '#1f2937',
-            font: { color: '#f3f4f6' },
-            margin: { l: 50, r: 30, t: 40, b: 40 },
-            showlegend: false
+        const container = d3.select(`#${this.frequencyContainer}`);
+        container.selectAll('*').remove();
+        
+        const { width, height, margin } = this.chartConfig;
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+
+        const svg = container
+            .append('svg')
+            .attr('width', '100%')
+            .attr('height', height)
+            .attr('viewBox', `0 0 ${width} ${height}`)
+            .attr('preserveAspectRatio', 'xMidYMid meet');
+
+        const g = svg.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // 创建比例尺
+        const xScale = d3.scaleLinear()
+            .domain([0, 100])
+            .range([0, innerWidth]);
+
+        const yScale = d3.scaleLinear()
+            .domain([0, 20])
+            .range([innerHeight, 0]);
+
+        // 创建坐标轴
+        const xAxis = d3.axisBottom(xScale)
+            .tickSize(-innerHeight)
+            .tickFormat(d => `${d}mm`);
+
+        const yAxis = d3.axisLeft(yScale)
+            .tickSize(-innerWidth);
+
+        // 添加网格和坐标轴
+        g.append('g')
+            .attr('class', 'grid')
+            .attr('transform', `translate(0,${innerHeight})`)
+            .call(xAxis)
+            .selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+
+        g.append('g')
+            .attr('class', 'grid')
+            .call(yAxis)
+            .selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+
+        // 坐标轴样式
+        g.selectAll('.domain').style('stroke', '#6b7280');
+        g.selectAll('.tick text').style('fill', '#d1d5db').style('font-size', '11px');
+
+        // 添加坐标轴标签
+        g.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('x', innerWidth / 2)
+            .attr('y', innerHeight + 45)
+            .style('fill', '#d1d5db')
+            .style('font-size', '12px')
+            .text('杆件长度 (mm)');
+
+        g.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('transform', 'rotate(-90)')
+            .attr('y', -55)
+            .attr('x', -innerHeight / 2)
+            .style('fill', '#d1d5db')
+            .style('font-size', '12px')
+            .text('放大因子');
+
+        // 添加标题
+        g.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('x', innerWidth / 2)
+            .attr('y', -15)
+            .style('fill', '#f3f4f6')
+            .style('font-size', '14px')
+            .style('font-weight', 'bold')
+            .text('各杆件响应强度');
+
+        // 保存图表引用
+        this.frequencyChart = {
+            svg, g, xScale, yScale, innerWidth, innerHeight
         };
-
-        const config = {
-            displayModeBar: false,
-            responsive: true
-        };
-
-        const data = [{
-            x: [],
-            y: [],
-            type: 'scatter',
-            mode: 'lines+markers',
-            line: { color: '#10b981', width: 2 },
-            marker: { color: '#10b981', size: 6 },
-            name: '放大因子'
-        }];
-
-        Plotly.newPlot(this.frequencyContainer, data, layout, config);
-        const frequencyPlotDiv = document.getElementById(this.frequencyContainer);
-        if (frequencyPlotDiv) {
-            // 强制设置容器样式，防止被压缩
-            frequencyPlotDiv.style.height = '320px';
-            frequencyPlotDiv.style.minHeight = '320px';
-            frequencyPlotDiv.style.width = '100%';
-            frequencyPlotDiv.style.display = 'block';
-            
-            // 延迟调用resize确保尺寸正确
-            setTimeout(() => {
-                Plotly.Plots.resize(frequencyPlotDiv);
-            }, 50);
-        }
     }
 
     /**
-     * 初始化共振分析图表
+     * 初始化共振分析图 - D3.js实现
      */
     initResonancePlot() {
-        const layout = {
-            title: {
-                text: '共振分析 - 杆长vs固有频率',
-                font: { color: '#f3f4f6', size: 14 }
-            },
-            xaxis: {
-                title: '杆长 (mm)',
-                color: '#d1d5db',
-                gridcolor: '#374151',
-                showgrid: true,
-                autorange: true // Added for consistency
-            },
-            yaxis: {
-                title: '固有频率 (Hz)',
-                color: '#d1d5db',
-                gridcolor: '#374151',
-                showgrid: true,
-                autorange: true // Added for consistency
-            },
-            plot_bgcolor: '#1f2937',
-            paper_bgcolor: '#1f2937',
-            font: { color: '#f3f4f6' },
-            margin: { l: 50, r: 30, t: 40, b: 40 },
-            showlegend: true,
-            legend: { 
-                bgcolor: 'rgba(17, 24, 39, 0.8)',
-                bordercolor: '#4b5563',
-                borderwidth: 1,
-                x: 1,
-                xanchor: 'right'
-            }
+        const container = d3.select(`#${this.resonanceContainer}`);
+        container.selectAll('*').remove();
+        
+        const { width, height, margin } = this.chartConfig;
+        const innerWidth = width - margin.left - margin.right;
+        const innerHeight = height - margin.top - margin.bottom;
+
+        const svg = container
+            .append('svg')
+            .attr('width', '100%')
+            .attr('height', height)
+            .attr('viewBox', `0 0 ${width} ${height}`)
+            .attr('preserveAspectRatio', 'xMidYMid meet');
+
+        const g = svg.append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // 创建比例尺
+        const xScale = d3.scaleLinear()
+            .domain([0, 100])
+            .range([0, innerWidth]);
+
+        const yScale = d3.scaleLinear()
+            .domain([0, 5000])
+            .range([innerHeight, 0]);
+
+        // 创建坐标轴
+        const xAxis = d3.axisBottom(xScale)
+            .tickSize(-innerHeight)
+            .tickFormat(d => `${d}mm`);
+
+        const yAxis = d3.axisLeft(yScale)
+            .tickSize(-innerWidth)
+            .tickFormat(d => `${d}Hz`);
+
+        // 添加网格和坐标轴
+        g.append('g')
+            .attr('class', 'grid')
+            .attr('transform', `translate(0,${innerHeight})`)
+            .call(xAxis)
+            .selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+
+        g.append('g')
+            .attr('class', 'grid')
+            .call(yAxis)
+            .selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+
+        // 坐标轴样式
+        g.selectAll('.domain').style('stroke', '#6b7280');
+        g.selectAll('.tick text').style('fill', '#d1d5db').style('font-size', '11px');
+
+        // 添加坐标轴标签
+        g.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('x', innerWidth / 2)
+            .attr('y', innerHeight + 45)
+            .style('fill', '#d1d5db')
+            .style('font-size', '12px')
+            .text('杆件长度 (mm)');
+
+        g.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('transform', 'rotate(-90)')
+            .attr('y', -55)
+            .attr('x', -innerHeight / 2)
+            .style('fill', '#d1d5db')
+            .style('font-size', '12px')
+            .text('固有频率 (Hz)');
+
+        // 添加标题
+        g.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('x', innerWidth / 2)
+            .attr('y', -15)
+            .style('fill', '#f3f4f6')
+            .style('font-size', '14px')
+            .style('font-weight', 'bold')
+            .text('共振分析');
+
+        // 添加图例
+        const legend = g.append('g')
+            .attr('class', 'legend')
+            .attr('transform', `translate(${innerWidth - 150}, 20)`);
+
+        // 第1阶模态图例
+        legend.append('circle')
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r', 4)
+            .style('fill', '#60a5fa');
+
+        legend.append('text')
+            .attr('x', 10)
+            .attr('y', 0)
+            .attr('dy', '0.35em')
+            .style('fill', '#d1d5db')
+            .style('font-size', '11px')
+            .text('第1阶模态');
+
+        // 共振状态图例
+        legend.append('circle')
+            .attr('cx', 0)
+            .attr('cy', 20)
+            .attr('r', 4)
+            .style('fill', '#ef4444');
+
+        legend.append('text')
+            .attr('x', 10)
+            .attr('y', 20)
+            .attr('dy', '0.35em')
+            .style('fill', '#d1d5db')
+            .style('font-size', '11px')
+            .text('共振状态');
+
+        // 激励频率图例
+        legend.append('line')
+            .attr('x1', -5)
+            .attr('x2', 5)
+            .attr('y1', 40)
+            .attr('y2', 40)
+            .style('stroke', '#fbbf24')
+            .style('stroke-width', 2)
+            .style('stroke-dasharray', '3,3');
+
+        legend.append('text')
+            .attr('x', 10)
+            .attr('y', 40)
+            .attr('dy', '0.35em')
+            .style('fill', '#d1d5db')
+            .style('font-size', '11px')
+            .text('激励频率');
+
+        // 保存图表引用
+        this.resonanceChart = {
+            svg, g, xScale, yScale, innerWidth, innerHeight
         };
-
-        const config = {
-            displayModeBar: false,
-            responsive: true
-        };
-
-        // 初始化空数据
-        const data = [
-            {
-                x: [],
-                y: [],
-                type: 'scatter',
-                mode: 'markers',
-                name: '第1阶模态',
-                marker: { color: '#60a5fa', size: 8 }
-            },
-            {
-                x: [],
-                y: [],
-                type: 'scatter',
-                mode: 'lines',
-                name: '激励频率',
-                line: { color: '#fbbf24', width: 3, dash: 'dash' }
-            }
-        ];
-
-        Plotly.newPlot(this.resonanceContainer, data, layout, config);
-        const resonancePlotDiv = document.getElementById(this.resonanceContainer);
-        if (resonancePlotDiv) {
-            // 强制设置容器样式，防止被压缩
-            resonancePlotDiv.style.height = '320px';
-            resonancePlotDiv.style.minHeight = '320px';
-            resonancePlotDiv.style.width = '100%';
-            resonancePlotDiv.style.display = 'block';
-            
-            // 延迟调用resize确保尺寸正确
-            setTimeout(() => {
-                Plotly.Plots.resize(resonancePlotDiv);
-            }, 50);
-        }
     }
 
     /**
-     * 更新波形图 - 支持10秒滚动时间窗口
-     * @param {number} rodIndex - 杆件索引
-     * @param {Array} waveformData - 波形数据 [{time, amplitude}]
+     * 更新波形图
      */
     updateWaveformPlot(waveformData, rodIndex = null) {
-        if (rodIndex !== null) {
-            // 如果指定了杆件索引，存储该杆件的数据
-            if (!this.waveformData.has(rodIndex)) {
-                this.waveformData.set(rodIndex, []);
-            }
-            
-            const rodData = this.waveformData.get(rodIndex);
-            
-            // 添加新数据点
-            if (Array.isArray(waveformData)) {
-                rodData.push(...waveformData);
-            } else if (waveformData && typeof waveformData === 'object') {
-                rodData.push(waveformData);
-            }
-            
-            // 获取当前时间
-            const currentTime = rodData.length > 0 ? Math.max(...rodData.map(d => d.time)) : 0;
-            
-            // 移除超出时间窗口的旧数据
-            const cutoffTime = currentTime - this.timeWindow;
-            const filteredData = rodData.filter(d => d.time >= cutoffTime);
-            this.waveformData.set(rodIndex, filteredData);
-            
-            // 限制数据点数量以避免性能问题
-            if (filteredData.length > this.maxDataPoints) {
-                const step = Math.ceil(filteredData.length / this.maxDataPoints);
-                const sampledData = filteredData.filter((_, i) => i % step === 0);
-                this.waveformData.set(rodIndex, sampledData);
-            }
-        }
-        
-        // 显示当前选中杆件的数据
-        this.displayCurrentRodWaveform();
-    }
-    
-    /**
-     * 显示当前选中杆件的波形数据 (节流)
-     */
-    displayCurrentRodWaveform() {
         const now = Date.now();
         if (now - this.lastPlotUpdateTime.waveform < this.plotUpdateInterval) {
-            return; // 节流，不到更新时间
+            return;
         }
         this.lastPlotUpdateTime.waveform = now;
 
-        const currentData = this.waveformData.get(this.currentSelectedRod) || [];
-        
-        if (currentData.length === 0) {
-            // 如果没有数据，也需要调用Plotly来清空，但可以减少调用频率
-            Plotly.react(this.waveformContainer, [{
-                x: [], y: [], type: 'scatter', mode: 'lines',
-                line: { color: '#60a5fa', width: 2 }, name: '波形'
-            }]).catch(err => console.error('Plotly react error (waveform clear):', err));
+        if (!this.waveformChart || !waveformData || waveformData.length === 0) {
             return;
         }
+
+        const actualRodIndex = rodIndex !== null ? rodIndex : this.currentSelectedRod;
         
-        const times = currentData.map(d => d.time);
-        const amplitudes = currentData.map(d => d.amplitude);
+        // 存储数据
+        if (!this.waveformData.has(actualRodIndex)) {
+            this.waveformData.set(actualRodIndex, []);
+        }
         
-        const currentTime = times.length > 0 ? Math.max(...times) : 0;
+        const rodData = this.waveformData.get(actualRodIndex);
+        waveformData.forEach(point => {
+            rodData.push({
+                time: point.time,
+                amplitude: point.amplitude
+            });
+        });
+
+        // 限制数据点数量
+        if (rodData.length > this.maxDataPoints) {
+            rodData.splice(0, rodData.length - this.maxDataPoints);
+        }
+
+        // 过滤时间窗口内的数据
+        const currentTime = rodData.length > 0 ? rodData[rodData.length - 1].time : 0;
         const windowStart = Math.max(0, currentTime - this.timeWindow);
-        const windowEnd = windowStart + this.timeWindow;
+        const visibleData = rodData.filter(d => d.time >= windowStart);
+
+        if (visibleData.length === 0) return;
+
+        // 更新比例尺域
+        const { xScale, yScale } = this.waveformChart;
+        const yExtent = d3.extent(visibleData, d => d.amplitude);
+        const yPadding = Math.abs(yExtent[1] - yExtent[0]) * 0.1 || 0.001;
         
-        const traceData = [{
-            x: times,
-            y: amplitudes,
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: '#60a5fa', width: 2 },
-            name: '波形'
-        }];
+        xScale.domain([windowStart, windowStart + this.timeWindow]);
+        yScale.domain([yExtent[0] - yPadding, yExtent[1] + yPadding]);
 
-        const layoutUpdate = {
-            'xaxis.range': [windowStart, windowEnd],
-            'yaxis.autorange': true // 保持Y轴自动范围
-        };
+        // 更新坐标轴
+        const { g } = this.waveformChart;
+        g.select('.grid').transition().duration(100).call(d3.axisBottom(xScale).tickSize(-this.waveformChart.innerHeight));
+        g.selectAll('.grid').selectAll('line').style('stroke', '#374151').style('stroke-dasharray', '2,2');
 
-        Plotly.react(this.waveformContainer, traceData, layoutUpdate).catch(err => console.error('Plotly react error (waveform):', err));
+        // 更新线条
+        g.select('.waveform-line')
+            .datum(visibleData)
+            .transition()
+            .duration(100)
+            .attr('d', this.waveformChart.line);
+
+        // 更新面积
+        g.select('.waveform-area')
+            .datum(visibleData)
+            .transition()
+            .duration(100)
+            .attr('d', this.waveformChart.area);
     }
-    
+
     /**
-     * 更新当前选中的杆件并切换波形显示
-     * @param {number} rodIndex - 杆件索引
+     * 更新频率响应图
      */
-    updateWaveformForRod(rodIndex) {
-        this.currentSelectedRod = rodIndex;
-        this.displayCurrentRodWaveform();
-        console.log(`波形图切换到杆件 ${rodIndex + 1}`);
+    updateFrequencyPlot(frequencyData) {
+        const now = Date.now();
+        if (now - this.lastPlotUpdateTime.frequency < this.plotUpdateInterval) {
+            return;
+        }
+        this.lastPlotUpdateTime.frequency = now;
+
+        if (!this.frequencyChart || !frequencyData || frequencyData.length === 0) {
+            return;
+        }
+
+        const { g, xScale, yScale } = this.frequencyChart;
+
+        // 更新比例尺域
+        const xExtent = d3.extent(frequencyData, d => d.length);
+        const yExtent = d3.extent(frequencyData, d => d.amplitude);
+        
+        xScale.domain([xExtent[0] - 5, xExtent[1] + 5]);
+        yScale.domain([0, Math.max(yExtent[1] * 1.1, 5)]);
+
+        // 更新坐标轴
+        g.select('.grid').transition().duration(200).call(d3.axisBottom(xScale).tickSize(-this.frequencyChart.innerHeight));
+        g.selectAll('.grid').selectAll('line').style('stroke', '#374151').style('stroke-dasharray', '2,2');
+
+        // 绑定数据并更新点
+        const circles = g.selectAll('.data-point')
+            .data(frequencyData, d => d.length);
+
+        circles.enter()
+            .append('circle')
+            .attr('class', 'data-point')
+            .attr('r', 0)
+            .merge(circles)
+            .transition()
+            .duration(200)
+            .attr('cx', d => xScale(d.length))
+            .attr('cy', d => yScale(d.amplitude))
+            .attr('r', d => d.isResonant ? 6 : 4)
+            .style('fill', d => d.isResonant ? '#ef4444' : '#10b981')
+            .style('stroke', d => d.isResonant ? '#fca5a5' : '#6ee7b7')
+            .style('stroke-width', 1);
+
+        circles.exit()
+            .transition()
+            .duration(200)
+            .attr('r', 0)
+            .remove();
+
+        // 添加连接线
+        const line = d3.line()
+            .x(d => xScale(d.length))
+            .y(d => yScale(d.amplitude))
+            .curve(d3.curveMonotoneX);
+
+        let connectionLine = g.select('.connection-line');
+        if (connectionLine.empty()) {
+            connectionLine = g.append('path').attr('class', 'connection-line');
+        }
+
+        connectionLine
+            .datum(frequencyData)
+            .transition()
+            .duration(200)
+            .attr('d', line)
+            .style('fill', 'none')
+            .style('stroke', '#10b981')
+            .style('stroke-width', 1.5)
+            .style('opacity', 0.7);
     }
-    
+
     /**
-     * 清空指定杆件的波形数据
-     * @param {number} rodIndex - 杆件索引，如果不指定则清空所有
+     * 更新共振分析图
+     */
+    updateResonancePlot(rodData, excitationFreq) {
+        const now = Date.now();
+        if (now - this.lastPlotUpdateTime.resonance < this.plotUpdateInterval) {
+            return;
+        }
+        this.lastPlotUpdateTime.resonance = now;
+
+        if (!this.resonanceChart || !rodData || rodData.length === 0) {
+            return;
+        }
+
+        const { g, xScale, yScale, innerWidth } = this.resonanceChart;
+
+        // 更新比例尺域
+        const xExtent = d3.extent(rodData, d => d.length);
+        const yExtent = d3.extent(rodData, d => d.naturalFreq);
+        
+        xScale.domain([xExtent[0] - 5, xExtent[1] + 5]);
+        yScale.domain([0, Math.max(yExtent[1] * 1.1, excitationFreq * 1.5)]);
+
+        // 更新坐标轴
+        g.select('.grid').transition().duration(200).call(d3.axisBottom(xScale).tickSize(-this.resonanceChart.innerHeight));
+        g.selectAll('.grid').selectAll('line').style('stroke', '#374151').style('stroke-dasharray', '2,2');
+
+        // 更新激励频率线
+        let excitationLine = g.select('.excitation-line');
+        if (excitationLine.empty()) {
+            excitationLine = g.append('line').attr('class', 'excitation-line');
+        }
+
+        excitationLine
+            .transition()
+            .duration(200)
+            .attr('x1', 0)
+            .attr('x2', innerWidth)
+            .attr('y1', yScale(excitationFreq))
+            .attr('y2', yScale(excitationFreq))
+            .style('stroke', '#fbbf24')
+            .style('stroke-width', 2)
+            .style('stroke-dasharray', '5,5');
+
+        // 绑定数据并更新点
+        const circles = g.selectAll('.resonance-point')
+            .data(rodData, d => d.length);
+
+        circles.enter()
+            .append('circle')
+            .attr('class', 'resonance-point')
+            .attr('r', 0)
+            .merge(circles)
+            .transition()
+            .duration(200)
+            .attr('cx', d => xScale(d.length))
+            .attr('cy', d => yScale(d.naturalFreq))
+            .attr('r', d => d.isResonant ? 6 : 4)
+            .style('fill', d => d.isResonant ? '#ef4444' : '#60a5fa')
+            .style('stroke', d => d.isResonant ? '#fca5a5' : '#93c5fd')
+            .style('stroke-width', 1);
+
+        circles.exit()
+            .transition()
+            .duration(200)
+            .attr('r', 0)
+            .remove();
+    }
+
+    /**
+     * 清空波形数据
      */
     clearWaveformData(rodIndex = null) {
         if (rodIndex !== null) {
@@ -348,346 +645,63 @@ class Visualization {
         } else {
             this.waveformData.clear();
         }
-        this.displayCurrentRodWaveform();
-    }
-
-    /**
-     * 更新频率响应图 (节流)
-     * @param {Array} frequencyData - 频率数据 [{length, amplitude, isResonant}]
-     */
-    updateFrequencyPlot(frequencyData) {
-        const now = Date.now();
-        if (now - this.lastPlotUpdateTime.frequency < this.plotUpdateInterval) {
-            return; // 节流
-        }
-        this.lastPlotUpdateTime.frequency = now;
-
-        if (!frequencyData || frequencyData.length === 0) {
-            this.clearFrequencyPlot();
-            return;
-        }
-
-        const rodLengths = frequencyData.map(d => d.length);
-        const amplitudes = frequencyData.map(d => d.amplitude);
-        const colors = frequencyData.map(d => d.isResonant ? '#ef4444' : '#10b981');
-
-        const updatedTrace = {
-            x: rodLengths, 
-            y: amplitudes, 
-            type: 'scatter',
-            mode: 'lines+markers',
-            marker: { 
-                color: colors,
-                size: 8,
-                line: { color: 'rgba(255,255,255,0.3)', width: 1 }
-            },
-            name: '放大因子'
-        };
-        
-        const layoutUpdate = {
-            'yaxis.autorange': true,
-            'xaxis.autorange': true
-        };
-
-        Plotly.react(this.frequencyContainer, [updatedTrace], layoutUpdate)
-            .catch(err => console.error('Plotly react error (frequency):', err));
     }
 
     /**
      * 清空波形图
      */
     clearWaveformPlot() {
-        const update = {
-            x: [[]],
-            y: [[]]
-        };
-        Plotly.restyle(this.waveformContainer, update, [0]);
-    }
-
-    /**
-     * 清空频谱图
-     */
-    clearFrequencyPlot() {
-        const update = {
-            x: [[]],
-            y: [[]]
-        };
-        Plotly.restyle(this.frequencyContainer, update, [0]);
-    }
-
-    /**
-     * 绘制生成的正弦波
-     * @param {number} frequency - 频率
-     * @param {number} duration - 持续时间
-     * @param {number} amplitude - 幅度
-     */
-    plotGeneratedSineWave(frequency, duration, amplitude = 1.0) {
-        const sampleRate = 1000; // 采样率
-        const numSamples = sampleRate * duration;
-        const waveformData = [];
-
-        for (let i = 0; i < numSamples; i++) {
-            const time = i / sampleRate;
-            const value = amplitude * Math.sin(2 * Math.PI * frequency * time);
-            waveformData.push({ time, amplitude: value });
+        if (this.waveformChart) {
+            this.waveformChart.g.select('.waveform-line').attr('d', null);
+            this.waveformChart.g.select('.waveform-area').attr('d', null);
         }
-
-        this.updateWaveformPlot(waveformData);
-
-        // 绘制频谱（单一频率）
-        const frequencyData = [
-            { frequency: frequency, amplitude: amplitude }
-        ];
-        this.updateFrequencyPlot(frequencyData);
     }
 
     /**
-     * 绘制扫频信号
-     * @param {number} startFreq - 起始频率
-     * @param {number} endFreq - 结束频率
-     * @param {number} duration - 持续时间
-     * @param {number} amplitude - 幅度
+     * 更新选中杆件的波形显示
      */
-    plotSweepSignal(startFreq, endFreq, duration, amplitude = 1.0) {
-        const sampleRate = 1000;
-        const numSamples = sampleRate * duration;
-        const waveformData = [];
+    updateWaveformForRod(rodIndex) {
+        this.currentSelectedRod = rodIndex;
+        this.displayCurrentRodWaveform();
+    }
 
-        for (let i = 0; i < numSamples; i++) {
-            const time = i / sampleRate;
-            const freq = startFreq + (endFreq - startFreq) * (time / duration);
-            const value = amplitude * Math.sin(2 * Math.PI * freq * time);
-            waveformData.push({ time, amplitude: value });
+    /**
+     * 显示当前选中杆件的波形
+     */
+    displayCurrentRodWaveform() {
+        const rodData = this.waveformData.get(this.currentSelectedRod);
+        if (rodData && rodData.length > 0) {
+            this.updateWaveformPlot(rodData, this.currentSelectedRod);
         }
-
-        this.updateWaveformPlot(waveformData);
-
-        // 扫频信号的频谱是连续的
-        const frequencyData = [];
-        const freqStep = (endFreq - startFreq) / 100;
-        for (let f = startFreq; f <= endFreq; f += freqStep) {
-            frequencyData.push({ 
-                frequency: f, 
-                amplitude: amplitude * 0.5 // 扫频信号每个频率的能量较小
-            });
-        }
-        this.updateFrequencyPlot(frequencyData);
     }
 
     /**
-     * 显示音频文件的波形和频谱
-     * @param {AudioBuffer} audioBuffer - 音频缓冲区
-     */
-    plotAudioFile(audioBuffer) {
-        if (!audioBuffer) return;
-
-        // 获取并显示波形
-        const waveformData = audioProcessor.getWaveformData(audioBuffer, 1000);
-        this.updateWaveformPlot(waveformData);
-
-        // 分析并显示频谱
-        const frequencyData = audioProcessor.analyzeAudioFrequency();
-        this.updateFrequencyPlot(frequencyData);
-    }
-
-    /**
-     * 绘制杆件共振频率对比图
-     * @param {Array} rodStatusList - 杆件状态列表
-     * @param {number} excitationFreq - 激励频率
-     */
-    plotResonanceComparison(rodStatusList, excitationFreq) {
-        // 创建一个新的图表显示杆件共振频率
-        const resonanceData = [];
-        const colors = [];
-        
-        rodStatusList.forEach(rod => {
-            rod.naturalFrequencies.forEach((freq, modeIndex) => {
-                resonanceData.push({
-                    x: rod.length,
-                    y: freq,
-                    mode: modeIndex + 1,
-                    isResonant: Math.abs(freq - excitationFreq) <= freq * 0.05
-                });
-            });
-        });
-
-        // 按模态分组数据
-        const modeGroups = {};
-        resonanceData.forEach(point => {
-            if (!modeGroups[point.mode]) {
-                modeGroups[point.mode] = { x: [], y: [], colors: [] };
-            }
-            modeGroups[point.mode].x.push(point.x);
-            modeGroups[point.mode].y.push(point.y);
-            modeGroups[point.mode].colors.push(point.isResonant ? '#ff4444' : '#60a5fa');
-        });
-
-        // 创建图表数据
-        const traces = [];
-        Object.keys(modeGroups).forEach(mode => {
-            const group = modeGroups[mode];
-            traces.push({
-                x: group.x,
-                y: group.y,
-                mode: 'markers',
-                type: 'scatter',
-                name: `${mode}阶模态`,
-                marker: {
-                    color: group.colors,
-                    size: 8,
-                    line: { width: 1, color: '#ffffff' }
-                }
-            });
-        });
-
-        // 添加激励频率线
-        traces.push({
-            x: [Math.min(...rodStatusList.map(r => r.length)), Math.max(...rodStatusList.map(r => r.length))],
-            y: [excitationFreq, excitationFreq],
-            mode: 'lines',
-            type: 'scatter',
-            name: '激励频率',
-            line: { color: '#fbbf24', width: 3, dash: 'dash' }
-        });
-
-        const layout = {
-            title: {
-                text: '杆件共振频率对比',
-                font: { color: '#f3f4f6', size: 16 }
-            },
-            xaxis: {
-                title: '杆长 (mm)',
-                color: '#d1d5db',
-                gridcolor: '#374151'
-            },
-            yaxis: {
-                title: '频率 (Hz)',
-                color: '#d1d5db',
-                gridcolor: '#374151'
-            },
-            plot_bgcolor: '#1f2937',
-            paper_bgcolor: '#1f2937',
-            font: { color: '#f3f4f6' },
-            showlegend: true,
-            legend: { 
-                bgcolor: 'rgba(17, 24, 39, 0.8)',
-                bordercolor: '#4b5563',
-                borderwidth: 1
-            }
-        };
-
-        // 如果容器不存在，创建一个新的
-        const containerId = 'resonance-comparison-plot';
-        if (!document.getElementById(containerId)) {
-            const container = document.createElement('div');
-            container.id = containerId;
-            container.style.width = '100%';
-            container.style.height = '300px';
-            container.style.margin = '10px 0';
-            document.getElementById('frequency-plot').parentNode.appendChild(container);
-        }
-
-        Plotly.newPlot(containerId, traces, layout, { displayModeBar: false, responsive: true });
-    }
-
-    /**
-     * 实时更新杆件状态显示
-     * @param {Array} rodStatusList - 杆件状态列表
-     */
-    updateRodStatusDisplay(rodStatusList) {
-        const container = document.getElementById('rodStatusList');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        rodStatusList.forEach(rod => {
-            const statusDiv = document.createElement('div');
-            statusDiv.className = `rod-status ${rod.isResonant ? 'rod-resonant' : ''}`;
-            
-            const resonantText = rod.isResonant ? ' (共振!)' : '';
-            statusDiv.innerHTML = `
-                <div style="font-weight: bold;">杆 ${rod.index}: ${rod.length}mm${resonantText}</div>
-                <div style="font-size: 11px; margin-top: 2px;">
-                    固有频率: ${rod.naturalFrequencies.slice(0, 2).join(', ')} Hz
-                </div>
-                <div style="font-size: 10px; color: #9ca3af;">
-                    材料: ${rod.material}
-                </div>
-            `;
-            
-            container.appendChild(statusDiv);
-        });
-    }
-
-    /**
-     * 调整图表大小
+     * 窗口大小调整
      */
     resize() {
-        if (document.getElementById(this.waveformContainer)) {
-            Plotly.Plots.resize(this.waveformContainer);
-        }
-        if (document.getElementById(this.frequencyContainer)) {
-            Plotly.Plots.resize(this.frequencyContainer);
-        }
-        if (document.getElementById(this.resonanceContainer)) {
-            Plotly.Plots.resize(this.resonanceContainer);
-        }
+        // D3.js的SVG使用viewBox，会自动响应式调整
+        console.log('D3 charts auto-resize with viewBox');
     }
 
-    /**
-     * 更新共振分析图表 (节流)
-     * @param {Array} rodData - 杆件数据 [{length, naturalFreq, isResonant}]
-     * @param {number} excitationFreq - 当前激励频率
-     */
-    updateResonancePlot(rodData, excitationFreq) {
-        const now = Date.now();
-        if (now - this.lastPlotUpdateTime.resonance < this.plotUpdateInterval) {
-            return; // 节流
-        }
-        this.lastPlotUpdateTime.resonance = now;
+    // 占位方法，保持兼容性
+    plotGeneratedSineWave(frequency, duration, amplitude = 1.0) {
+        console.log('plotGeneratedSineWave (D3版本暂未实现)');
+    }
 
-        if (!rodData || !Array.isArray(rodData) || rodData.length === 0) { // Added empty check for safety
-            console.warn('updateResonancePlot: rodData is invalid or empty', rodData);
-            // Optionally clear the plot if data is empty
-            // Plotly.react(this.resonanceContainer, [], this.resonancePlotLayout || {}); 
-            return;
-        }
+    plotSweepSignal(startFreq, endFreq, duration, amplitude = 1.0) {
+        console.log('plotSweepSignal (D3版本暂未实现)');
+    }
 
-        const lengths = rodData.map(r => r.length);
-        const naturalFreqs = rodData.map(r => r.naturalFreq);
-        const colors = rodData.map(r => r.isResonant ? '#ef4444' : '#60a5fa');
-        const sizes = rodData.map(r => r.isResonant ? 10 : 8);
-        const symbols = rodData.map(r => r.isResonant ? 'diamond' : 'circle');
+    plotAudioFile(audioBuffer) {
+        console.log('plotAudioFile (D3版本暂未实现)');
+    }
 
-        const minLength = Math.min(...lengths, 0);
-        const maxLength = Math.max(...lengths, 100);
+    plotResonanceComparison(rodStatusList, excitationFreq) {
+        console.log('plotResonanceComparison (D3版本暂未实现)');
+    }
 
-        const update = {
-            data: [
-                { // 第1阶模态
-                    x: lengths,
-                    y: naturalFreqs,
-                    type: 'scatter',
-                    mode: 'markers',
-                    name: '第1阶模态', // Added name
-                    marker: { color: colors, size: sizes, symbol: symbols }
-                },
-                { // 激励频率线
-                    x: [minLength, maxLength],
-                    y: [excitationFreq, excitationFreq],
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: '激励频率', // Added name
-                    line: { color: '#fbbf24', width: 3, dash: 'dash' }
-                }
-            ],
-            layout: {
-                 'xaxis.autorange': true,
-                 'yaxis.autorange': true
-            }
-        };
-
-        Plotly.react(this.resonanceContainer, update.data, update.layout).catch(err => console.error('Plotly react error (resonance):', err));
+    updateRodStatusDisplay(rodStatusList) {
+        console.log('updateRodStatusDisplay (D3版本暂未实现)');
     }
 }
 

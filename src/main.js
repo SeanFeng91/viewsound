@@ -8,7 +8,7 @@ import App from './App.vue'
 const waitForLibraries = () => {
   return new Promise((resolve) => {
     const checkLibraries = () => {
-      if (typeof THREE !== 'undefined' && typeof Plotly !== 'undefined') {
+      if (typeof THREE !== 'undefined' && typeof d3 !== 'undefined') {
         console.log('✓ 外部库已加载完成，启动Vue应用')
         resolve()
       } else {

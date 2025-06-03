@@ -44,8 +44,8 @@ class MainController {
             if (typeof THREE === 'undefined') {
                 throw new Error('THREE.js 尚未加载');
             }
-            if (typeof Plotly === 'undefined') {
-                throw new Error('Plotly.js 尚未加载');
+            if (typeof d3 === 'undefined') {
+                throw new Error('D3.js 尚未加载');
             }
             
             // 初始化各个模块 - 按依赖顺序

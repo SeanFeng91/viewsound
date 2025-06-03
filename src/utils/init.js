@@ -105,26 +105,32 @@ function checkThreeJSLoaded() {
 }
 
 /**
- * 检查Plotly依赖
+ * 检查D3依赖
  */
-function checkPlotlyLoaded() {
+function checkD3Loaded() {
     return new Promise((resolve, reject) => {
         let attempts = 0;
-        const maxAttempts = 30; // 最多等待3秒
+        const maxAttempts = 10;
         
-        const checkInterval = setInterval(() => {
+        const checkLibrary = () => {
             attempts++;
             
-            if (typeof Plotly !== 'undefined') {
-                console.log('✓ Plotly库已加载');
-                clearInterval(checkInterval);
+            if (typeof d3 !== 'undefined') {
+                console.log('✓ D3库已加载');
                 resolve(true);
-            } else if (attempts >= maxAttempts) {
-                console.error('Plotly库未加载，请检查CDN链接');
-                clearInterval(checkInterval);
-                reject(false);
+                return;
             }
-        }, 100);
+            
+            if (attempts >= maxAttempts) {
+                console.error('D3库未加载，请检查CDN链接');
+                reject(new Error('D3库加载失败'));
+                return;
+            }
+            
+            setTimeout(checkLibrary, 100);
+        };
+        
+        checkLibrary();
     });
 }
 
@@ -261,7 +267,7 @@ async function initializeApplication() {
         showLoadingStatus('检查外部库...');
         try {
             await checkThreeJSLoaded();
-            await checkPlotlyLoaded();
+            await checkD3Loaded();
         } catch (error) {
             showError('外部库加载失败，请检查网络连接');
             return;
