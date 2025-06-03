@@ -394,14 +394,6 @@ class RodManager {
      */
     updateVisualization(data) {
         if (typeof window !== 'undefined' && window.visualization) {
-            const rodCountForPerformanceCheck = this.displayModeConfig.mode === 'linear' ? this.baseRodConfig.count : (this.displayModeConfig.gridX * this.displayModeConfig.gridY);
-            const rodCountThreshold = 50; 
-            
-            // Check if we should pause plot updates due to high rod count
-            // This threshold logic might need adjustment based on the new grouped data size for frequency/resonance plots
-            // For now, let's assume the primary bottleneck was individual rod processing for these plots.
-            // The waveform plot still processes all data points if not optimized further.
-
             // Waveform data update (per rod, as before)
             if (data.waveformData && data.waveformData.length > 0) {
                 const rodWaveformMap = new Map();
@@ -422,12 +414,7 @@ class RodManager {
             
             // Frequency plot update (uses grouped data)
             if (data.frequencyData) { // Can be empty array
-                 // If performance check is still needed for frequency/resonance, it would be based on data.frequencyData.length
-                if (rodCountForPerformanceCheck > rodCountThreshold && data.frequencyData.length > rodCountThreshold * 0.1 /* arbitrary factor for grouped data */) {
-                    console.warn(`[RodManager.updateVisualization] Grouped frequency data still large. Skipping update.`);
-                } else {
-                    window.visualization.updateFrequencyPlot(data.frequencyData);
-                }
+                window.visualization.updateFrequencyPlot(data.frequencyData);
             }
             
             // Resonance plot update (uses grouped data, transformed)
@@ -437,11 +424,7 @@ class RodManager {
                     naturalFreq: item.naturalFrequency,
                     isResonant: item.isResonant 
                 }));
-                 if (rodCountForPerformanceCheck > rodCountThreshold && resonanceDataForPlot.length > rodCountThreshold * 0.1) {
-                     console.warn(`[RodManager.updateVisualization] Grouped resonance data still large. Skipping update.`);
-                 } else {
-                    window.visualization.updateResonancePlot(resonanceDataForPlot, this.excitationFreq);
-                 }
+                window.visualization.updateResonancePlot(resonanceDataForPlot, this.excitationFreq);
             }
         }
     }

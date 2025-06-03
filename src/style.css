@@ -37,4 +37,44 @@
 .js-plotly-plot .plot-container {
   height: 100% !important;
   width: 100% !important;
+}
+
+/* 全局下拉菜单样式 - 确保所有下拉菜单都能正确显示 */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='6' viewBox='0 0 12 6'><path fill='%23e2e8f0' d='M0 0l6 6 6-6z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  padding-right: 32px !important;
+}
+
+/* 深色主题下的下拉菜单 */
+select.dark-select-options {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+select.dark-select-options option {
+  background-color: #2d3748 !important;
+  color: #e2e8f0 !important;
+  padding: 8px 12px !important;
+  border: none !important;
+}
+
+/* 针对不同浏览器的兼容性 */
+select.dark-select-options option:hover,
+select.dark-select-options option:focus {
+  background-color: #4a5568 !important;
+  color: #f7fafc !important;
+}
+
+select.dark-select-options option:checked,
+select.dark-select-options option:selected {
+  background-color: #4299e1 !important;
+  color: #ffffff !important;
+  font-weight: bold !important;
 } 

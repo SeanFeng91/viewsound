@@ -595,8 +595,32 @@ function convertToCSV(data) {
 }
 
 /* 为下拉菜单选项定义统一样式 */
+.dark-select-options {
+  background-color: #2d3748 !important; /* 深色背景 */
+  color: #e2e8f0 !important;           /* 浅色文字 */
+}
+
 .dark-select-options option {
-  background-color: #2d3748; /* Tailwind CSS gray-800 */
-  color: #e2e8f0;           /* Tailwind CSS gray-200 */
+  background-color: #2d3748 !important; /* Tailwind CSS gray-800 */
+  color: #e2e8f0 !important;           /* Tailwind CSS gray-200 */
+  padding: 4px 8px;
+}
+
+/* 确保下拉菜单的focus状态也正确显示 */
+.dark-select-options:focus option {
+  background-color: #4a5568 !important; /* 稍亮的背景 */
+  color: #f7fafc !important;           /* 更亮的文字 */
+}
+
+/* 选中状态的样式 */
+.dark-select-options option:checked {
+  background-color: #4299e1 !important; /* 蓝色背景 */
+  color: #ffffff !important;           /* 白色文字 */
+}
+
+/* hover状态 */
+.dark-select-options option:hover {
+  background-color: #4a5568 !important; /* 悬停时的背景 */
+  color: #f7fafc !important;           /* 悬停时的文字 */
 }
 </style>

@@ -151,7 +151,16 @@ class Visualization {
         Plotly.newPlot(this.frequencyContainer, data, layout, config);
         const frequencyPlotDiv = document.getElementById(this.frequencyContainer);
         if (frequencyPlotDiv) {
-            Plotly.Plots.resize(frequencyPlotDiv); // Force resize
+            // 强制设置容器样式，防止被压缩
+            frequencyPlotDiv.style.height = '320px';
+            frequencyPlotDiv.style.minHeight = '320px';
+            frequencyPlotDiv.style.width = '100%';
+            frequencyPlotDiv.style.display = 'block';
+            
+            // 延迟调用resize确保尺寸正确
+            setTimeout(() => {
+                Plotly.Plots.resize(frequencyPlotDiv);
+            }, 50);
         }
     }
 
@@ -220,7 +229,16 @@ class Visualization {
         Plotly.newPlot(this.resonanceContainer, data, layout, config);
         const resonancePlotDiv = document.getElementById(this.resonanceContainer);
         if (resonancePlotDiv) {
-            Plotly.Plots.resize(resonancePlotDiv); // Force resize
+            // 强制设置容器样式，防止被压缩
+            resonancePlotDiv.style.height = '320px';
+            resonancePlotDiv.style.minHeight = '320px';
+            resonancePlotDiv.style.width = '100%';
+            resonancePlotDiv.style.display = 'block';
+            
+            // 延迟调用resize确保尺寸正确
+            setTimeout(() => {
+                Plotly.Plots.resize(resonancePlotDiv);
+            }, 50);
         }
     }
 
@@ -660,4 +678,18 @@ class Visualization {
                     type: 'scatter',
                     mode: 'lines',
                     name: '激励频率', // Added name
-                    line: { color: '#fbbf24', width: 3, dash:
+                    line: { color: '#fbbf24', width: 3, dash: 'dash' }
+                }
+            ],
+            layout: {
+                 'xaxis.autorange': true,
+                 'yaxis.autorange': true
+            }
+        };
+
+        Plotly.react(this.resonanceContainer, update.data, update.layout).catch(err => console.error('Plotly react error (resonance):', err));
+    }
+}
+
+// ES6 模块导出
+export { Visualization }; 
