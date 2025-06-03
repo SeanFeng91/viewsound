@@ -432,20 +432,19 @@ function convertToCSV(data) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+  <div class="min-h-screen bg-gray-900 text-gray-200 flex flex-col">
     <!-- 顶部标题 -->
-    <header class="p-6 text-center">
-      <h1 class="text-4xl font-bold text-white mb-2">多杆件振动模拟系统</h1>
-      <p class="text-gray-300">支持音频驱动的实时振动分析与可视化</p>
+    <header class="p-4 text-center border-b border-gray-700">
+      <h1 class="text-3xl font-bold text-white">多杆件振动模拟系统</h1>
+      <p class="text-gray-400 text-sm">支持音频驱动的实时振动分析与可视化</p>
     </header>
 
     <!-- 主体内容 -->
-    <main class="container mx-auto px-4 pb-8">
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <main class="flex-grow container mx-auto px-2 py-2 lg:px-4 lg:py-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 lg:gap-4 h-full">
         
         <!-- 左侧控制面板 -->
-        <div class="xl:col-span-1 space-y-6">
-          <!-- 振动控制 -->
+        <div class="lg:col-span-4 space-y-3 overflow-y-auto pr-1">
           <VibrationControls
             ref="vibrationControls"
             @update-rod-config="handleRodConfigUpdate"
@@ -457,48 +456,49 @@ function convertToCSV(data) {
             @select-rod="handleRodSelection"
             @update-audio-settings="handleAudioSettings"
             @update-display-mode="handleDisplayModeUpdate"
+            class="bg-gray-800 p-3 rounded-md border border-gray-700"
           />
           
-          <!-- 音频播放器 -->
-          <AudioPlayer ref="audioPlayer" />
+          <AudioPlayer 
+            ref="audioPlayer" 
+            class="bg-gray-800 p-3 rounded-md border border-gray-700"
+          />
         </div>
 
         <!-- 右侧可视化区域 -->
-        <div class="xl:col-span-2 space-y-6 max-w-none">
+        <div class="lg:col-span-8 space-y-3 overflow-y-auto pl-1">
           <!-- 3D可视化 -->
-          <div class="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
-            <h3 class="text-lg font-semibold text-white mb-4">3D振动可视化</h3>
+          <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+            <h3 class="text-lg font-semibold text-white mb-2">3D振动可视化</h3>
             <div 
               ref="threejsContainer"
               id="threejs-container"
-              class="h-96 bg-black/20 rounded-lg relative overflow-hidden"
+              class="h-64 md:h-80 bg-black rounded relative overflow-hidden border border-gray-700"
             >
-              <!-- Three.js 渲染器将在此处挂载 -->
               <div 
                 v-if="!is3DInitialized"
-                class="absolute inset-0 flex items-center justify-center text-white/50"
+                class="absolute inset-0 flex items-center justify-center text-gray-400"
               >
                 <div class="text-center">
-                  <div class="animate-pulse text-3xl">🔧</div>
-                  <p class="mt-2">正在初始化3D场景...</p>
+                  <div class="animate-pulse text-2xl">🔧</div>
+                  <p class="mt-1 text-sm">正在初始化3D场景...</p>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- 图表可视化 -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <!-- 波形图 -->
-            <div class="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
-              <div class="flex justify-between items-center mb-3">
+            <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+              <div class="flex justify-between items-center mb-2">
                 <h4 class="text-md font-medium text-white">振动波形</h4>
-                <!-- 杆件选择控件 -->
-                <div class="flex items-center space-x-2">
-                  <label class="text-sm text-gray-300">杆件:</label>
+                <div class="flex items-center space-x-1">
+                  <label class="text-xs text-gray-400">杆件:</label>
                   <select 
                     v-model="selectedRodIndex"
                     @change="handleRodSelectionChange"
-                    class="dark-select-options px-2 py-1 text-sm bg-white/10 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="dark-select-options px-2 py-0.5 text-xs bg-gray-700 border border-gray-600 rounded text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option v-for="i in currentConfig.rodCount" :key="i-1" :value="i-1">
                       杆件{{ i }} ({{ getRodLength(i-1) }}mm)
@@ -506,41 +506,34 @@ function convertToCSV(data) {
                   </select>
                 </div>
               </div>
-              <div class="chart-container">
-                <div id="waveform-plot" class="w-full h-80">
-                  <!-- D3.js 图表将在此处渲染 -->
-                </div>
+              <div class="chart-container bg-gray-850 rounded border border-gray-700">
+                <div id="waveform-plot" class="w-full h-56"></div>
               </div>
-              <p class="text-xs text-gray-300 mt-2">
-                📈 显示选定杆件的实时振动位移随时间变化，展示振动的时域特性
+              <p class="text-xs text-gray-400 mt-1">
+                📈 实时振动位移
               </p>
             </div>
 
             <!-- 频率图 -->
-            <div class="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
-              <h4 class="text-md font-medium text-white mb-3">各杆件响应强度</h4>
-              <div class="chart-container">
-                <div id="frequency-plot" class="w-full h-80">
-                  <!-- D3.js 图表将在此处渲染 -->
-                </div>
+            <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+              <h4 class="text-md font-medium text-white mb-2">各杆件响应强度</h4>
+              <div class="chart-container bg-gray-850 rounded border border-gray-700">
+                <div id="frequency-plot" class="w-full h-56"></div>
               </div>
-              <p class="text-xs text-gray-300 mt-2">
-                📊 显示各杆件在当前激励频率下的放大因子。绿点为正常响应，红点为共振状态
+              <p class="text-xs text-gray-400 mt-1">
+                📊 放大因子 (红点: 共振)
               </p>
             </div>
           </div>
 
           <!-- 共振分析图 -->
-          <div>
-            <h3 class="text-base font-semibold mb-3 text-blue-400">共振分析</h3>
-            <div class="chart-container">
-              <div id="resonance-plot" class="w-full h-80">
-                <!-- D3.js 图表将在此处渲染 -->
-              </div>
+          <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+            <h3 class="text-md font-medium text-white mb-2">共振分析</h3>
+            <div class="chart-container bg-gray-850 rounded border border-gray-700">
+              <div id="resonance-plot" class="w-full h-56"></div>
             </div>
-            <p class="text-xs text-gray-300 mt-2">
-              🎯 展示杆长与固有频率的关系：蓝点为各杆件的第一阶固有频率，黄线为当前激励频率。
-              红点表示与激励频率接近共振的杆件。杆件越短，固有频率越高。
+            <p class="text-xs text-gray-400 mt-1">
+              🎯 固有频率 vs 激励频率
             </p>
           </div>
         </div>
@@ -548,18 +541,18 @@ function convertToCSV(data) {
     </main>
 
     <!-- 状态栏 -->
-    <footer class="bg-black/20 backdrop-blur-sm border-t border-white/10 p-4">
+    <footer class="p-2 text-center border-t border-gray-700 mt-auto">
       <div class="container mx-auto">
-        <div class="flex justify-between items-center text-sm text-gray-300">
+        <div class="flex justify-between items-center text-xs text-gray-400">
           <div>
             状态: <span :class="isSimulationRunning ? 'text-green-400' : 'text-gray-400'">
               {{ isSimulationRunning ? '运行中' : '停止' }}
             </span>
           </div>
-          <div class="flex gap-4">
-            <span>杆件数量: {{ currentConfig.rodCount }}</span>
-            <span>激励频率: {{ currentConfig.frequency }}Hz</span>
-            <span>材料: {{ getMaterialName(currentConfig.material) }}</span>
+          <div class="flex gap-2">
+            <span>杆数:{{ currentConfig.rodCount }}</span>
+            <span>频率:{{ currentConfig.frequency }}Hz</span>
+            <span>材料:{{ getMaterialName(currentConfig.material) }}</span>
           </div>
         </div>
       </div>
@@ -568,53 +561,55 @@ function convertToCSV(data) {
 </template>
 
 <style scoped>
-/* 组件特定样式 */
+/* Minimal scoped styles, relying mostly on Tailwind */
 .container {
-  max-width: 1600px; /* 增加最大宽度以适应超宽屏 */
-  margin: 0 auto; /* 确保居中 */
+  max-width: 100%; /* Allow full width usage within viewport constraints */
 }
 
-/* 确保在超宽屏幕上内容不会过度拉伸 */
-@media (min-width: 1920px) {
-  .container {
-    max-width: 1400px;
-  }
-}
-
-/* 针对4K屏幕的优化 */
-@media (min-width: 2560px) {
-  .container {
-    max-width: 1600px;
-  }
-}
-
-/* 为下拉菜单选项定义统一样式 */
+/* Adjustments for dark-select-options to fit new solid theme */
 .dark-select-options {
-  background-color: #2d3748 !important; /* 深色背景 */
-  color: #e2e8f0 !important;           /* 浅色文字 */
+  background-color: #374151 !important; /* Tailwind gray-700 */
+  color: #e5e7eb !important;           /* Tailwind gray-200 */
+  border: 1px solid #4b5563 !important; /* Tailwind gray-600 */
 }
 
 .dark-select-options option {
-  background-color: #2d3748 !important; /* Tailwind CSS gray-800 */
-  color: #e2e8f0 !important;           /* Tailwind CSS gray-200 */
-  padding: 4px 8px;
+  background-color: #374151 !important; 
+  color: #e5e7eb !important;          
+  padding: 2px 4px; /* Reduced padding */
 }
 
-/* 确保下拉菜单的focus状态也正确显示 */
-.dark-select-options:focus option {
-  background-color: #4a5568 !important; /* 稍亮的背景 */
-  color: #f7fafc !important;           /* 更亮的文字 */
+.dark-select-options:focus option { /* This might not be very visible with solid BGs */
+  background-color: #4b5563 !important; 
+  color: #f9fafb !important;          
 }
 
-/* 选中状态的样式 */
 .dark-select-options option:checked {
-  background-color: #4299e1 !important; /* 蓝色背景 */
-  color: #ffffff !important;           /* 白色文字 */
+  background-color: #3b82f6 !important; /* Tailwind blue-500 */
+  color: #ffffff !important;          
 }
 
-/* hover状态 */
 .dark-select-options option:hover {
-  background-color: #4a5568 !important; /* 悬停时的背景 */
-  color: #f7fafc !important;           /* 悬停时的文字 */
+  background-color: #4b5563 !important; 
+  color: #f9fafb !important;           
+}
+
+/* Custom scrollbar for panels if content overflows */
+.lg\:col-span-4.overflow-y-auto::-webkit-scrollbar,
+.lg\:col-span-8.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+.lg\:col-span-4.overflow-y-auto::-webkit-scrollbar-track,
+.lg\:col-span-8.overflow-y-auto::-webkit-scrollbar-track {
+  background: #1f2937; /* Tailwind gray-800 */
+}
+.lg\:col-span-4.overflow-y-auto::-webkit-scrollbar-thumb,
+.lg\:col-span-8.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #4b5563; /* Tailwind gray-600 */
+  border-radius: 3px;
+}
+.lg\:col-span-4.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.lg\:col-span-8.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* Tailwind gray-500 */
 }
 </style>

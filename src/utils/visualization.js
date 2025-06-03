@@ -180,7 +180,7 @@ class Visualization {
         g.append('path')
             .attr('class', 'waveform-area')
             .style('fill', 'url(#waveform-gradient)');
-
+            
         // 保存图表引用
         this.waveformChart = {
             svg, g, xScale, yScale, line, area, innerWidth, innerHeight
@@ -272,7 +272,7 @@ class Visualization {
             .style('font-size', '14px')
             .style('font-weight', 'bold')
             .text('各杆件响应强度');
-
+            
         // 保存图表引用
         this.frequencyChart = {
             svg, g, xScale, yScale, innerWidth, innerHeight
@@ -400,7 +400,7 @@ class Visualization {
             .style('fill', '#d1d5db')
             .style('font-size', '11px')
             .text('共振状态');
-
+            
         // 激励频率图例
         legend.append('line')
             .attr('x1', -5)
@@ -444,8 +444,8 @@ class Visualization {
         // 存储数据
         if (!this.waveformData.has(actualRodIndex)) {
             this.waveformData.set(actualRodIndex, []);
-        }
-        
+            }
+            
         const rodData = this.waveformData.get(actualRodIndex);
         waveformData.forEach(point => {
             rodData.push({
@@ -457,8 +457,8 @@ class Visualization {
         // 限制数据点数量
         if (rodData.length > this.maxDataPoints) {
             rodData.splice(0, rodData.length - this.maxDataPoints);
-        }
-
+            }
+            
         // 过滤时间窗口内的数据
         const currentTime = rodData.length > 0 ? rodData[rodData.length - 1].time : 0;
         const windowStart = Math.max(0, currentTime - this.timeWindow);
@@ -493,7 +493,7 @@ class Visualization {
             .duration(100)
             .attr('d', this.waveformChart.area);
     }
-
+    
     /**
      * 更新频率响应图
      */
@@ -507,7 +507,7 @@ class Visualization {
         if (!this.frequencyChart || !frequencyData || frequencyData.length === 0) {
             return;
         }
-
+        
         const { g, xScale, yScale } = this.frequencyChart;
 
         // 更新比例尺域
@@ -635,7 +635,7 @@ class Visualization {
             .attr('r', 0)
             .remove();
     }
-
+    
     /**
      * 清空波形数据
      */
@@ -698,7 +698,7 @@ class Visualization {
 
     plotResonanceComparison(rodStatusList, excitationFreq) {
         console.log('plotResonanceComparison (D3版本暂未实现)');
-    }
+        }
 
     updateRodStatusDisplay(rodStatusList) {
         console.log('updateRodStatusDisplay (D3版本暂未实现)');

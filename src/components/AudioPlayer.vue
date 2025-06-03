@@ -1,68 +1,77 @@
 <template>
-  <div class="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
-    <h3 class="text-lg font-semibold text-white mb-4">音频文件处理</h3>
+  <div class="space-y-3">
+    <h3 class="text-base font-semibold text-white mb-2">音频文件处理</h3>
     
-    <!-- 音频文件选择 -->
-    <div class="mb-4">
-      <label class="block text-sm font-medium text-white mb-1">选择音频文件</label>
+    <div class="space-y-1.5">
+      <label class="block text-xs font-medium text-gray-300">选择音频文件</label>
       <input 
         ref="audioFileInput"
         type="file" 
         accept="audio/*" 
         @change="handleFileChange"
-        class="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white file:mr-4 file:py-1 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-blue-500 file:text-white file:rounded file:cursor-pointer hover:file:bg-blue-600"
+        class="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-sm text-gray-200 text-xs 
+               file:mr-2 file:py-1 file:px-3 file:border-0 file:text-xs file:font-semibold 
+               file:bg-blue-600 file:text-white file:rounded-sm file:cursor-pointer hover:file:bg-blue-700 
+               focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
       />
     </div>
     
-    <!-- 处理状态显示 -->
-    <div v-if="isProcessing" class="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-      <div class="flex items-center text-blue-400">
-        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-2"></div>
+    <div v-if="isProcessing" class="p-2.5 bg-blue-600/30 border border-blue-500/50 rounded-sm">
+      <div class="flex items-center text-blue-300 text-xs">
+        <svg class="animate-spin h-4 w-4 text-blue-300 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
         正在分析音频文件...
       </div>
     </div>
     
-    <!-- 音频信息显示 -->
-    <div v-if="audioInfo && audioBuffer" class="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-      <div class="flex items-center text-green-400 mb-2">
-        <span class="mr-2">✓</span>
+    <div v-if="audioInfo && audioBuffer" class="p-2.5 bg-green-600/30 border border-green-500/50 rounded-sm space-y-1.5">
+      <div class="flex items-center text-green-300 mb-1 text-xs font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
         音频文件就绪
       </div>
-      <div class="text-sm text-gray-300 space-y-1">
-        <div>文件: {{ audioInfo.filename }}</div>
-        <div>时长: {{ audioInfo.duration?.toFixed(2) }}秒</div>
-        <div>采样率: {{ audioInfo.sampleRate }}Hz</div>
-        <div>声道数: {{ audioInfo.channels }}</div>
+      <div class="text-xs text-gray-300 space-y-1 pl-1">
+        <div class="flex justify-between"><span class="font-medium text-gray-400">文件:</span> <span class="truncate">{{ audioInfo.filename }}</span></div>
+        <div class="flex justify-between"><span class="font-medium text-gray-400">时长:</span> <span>{{ audioInfo.duration?.toFixed(2) }}秒</span></div>
+        <div class="flex justify-between"><span class="font-medium text-gray-400">采样率:</span> <span>{{ audioInfo.sampleRate }}Hz</span></div>
+        <div class="flex justify-between"><span class="font-medium text-gray-400">声道数:</span> <span>{{ audioInfo.channels }}</span></div>
       </div>
     </div>
     
-    <!-- 波形显示 -->
-    <div v-if="audioBuffer" class="mb-4">
-      <div class="block text-sm font-medium text-white mb-2">波形显示</div>
+    <div v-if="audioBuffer" class="space-y-1.5">
+      <label class="block text-xs font-medium text-gray-300">波形显示</label>
       <div 
         ref="waveformContainer"
-        class="h-40 relative overflow-hidden bg-white/5 rounded-lg border border-white/10"
+        class="h-24 relative overflow-hidden bg-gray-700 rounded-sm border border-gray-600 group"
       >
         <canvas 
           ref="waveformCanvas"
-          class="absolute inset-0 w-full h-full"
+          class="absolute inset-0 w-full h-full cursor-pointer"
           @mousemove="onWaveformHover"
+          @mouseleave="clearHoverTime"
+          @click="seekTo"
         ></canvas>
-        <!-- 播放位置指示器 -->
+        <div v-if="hoverTime !== null && waveformContainer" 
+             class="absolute top-0 bottom-0 border-l border-dashed border-yellow-400 pointer-events-none"
+             :style="{ left: (hoverTime / duration) * waveformContainer.clientWidth + 'px' }">
+            <span class="absolute top-0 -translate-x-1/2 bg-gray-800 text-yellow-400 text-2xs px-1 rounded-b-sm">{{ formatTime(hoverTime) }}</span>
+        </div>
         <div 
           v-if="isPlaying && duration > 0"
-          class="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none transition-all duration-100"
-          :style="{ left: progressPercentage + '%' }"
+          class="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none transition-transform duration-100 ease-linear"
+          :style="{ transform: 'translateX(' + progressPixel + 'px)' }"
         ></div>
       </div>
     </div>
     
-    <!-- 频谱显示 -->
-    <div v-if="audioBuffer" class="mb-4">
-      <div class="block text-sm font-medium text-white mb-2">频谱分析</div>
+    <div v-if="audioBuffer" class="space-y-1.5">
+      <label class="block text-xs font-medium text-gray-300">频谱分析</label>
       <div 
         ref="spectrumContainer"
-        class="h-32 bg-white/5 rounded-lg border border-white/10"
+        class="h-20 bg-gray-700 rounded-sm border border-gray-600"
       >
         <canvas 
           ref="spectrumCanvas"
@@ -71,23 +80,20 @@
       </div>
     </div>
     
-    <!-- 频率分析信息 -->
-    <div v-if="isPlaying && isExcitationMode" class="mb-4 p-3 bg-white/5 rounded-lg">
-      <div class="flex justify-between items-center mb-2">
-        <span class="text-sm font-medium text-white">实时频率分析</span>
+    <div v-if="isPlaying && isExcitationMode" class="p-2.5 bg-gray-700/70 rounded-sm border border-gray-600/50 space-y-1.5">
+      <div class="flex justify-between items-center">
+        <span class="text-xs font-medium text-gray-200">实时频率分析</span>
         <button 
           @click="resetFrequencyAnalysis"
-          class="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
+          class="px-2 py-0.5 text-2xs bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-sm transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          重置分析
+          重置
         </button>
       </div>
-      <div class="text-xs text-gray-300 space-y-1">
-        <div v-if="currentAnalysis">
-          <span class="text-blue-400">主导频率:</span> 
-          {{ currentAnalysis.dominantFrequency.toFixed(1) }}Hz
-          <span class="ml-2 text-yellow-400">置信度:</span> 
-          {{ (currentAnalysis.confidence * 100).toFixed(0) }}%
+      <div class="text-2xs text-gray-300 space-y-1">
+        <div v-if="currentAnalysis" class="flex justify-between">
+          <div><span class="text-blue-400">主导频率:</span> {{ currentAnalysis.dominantFrequency.toFixed(1) }}Hz</div>
+          <div><span class="text-yellow-400">置信度:</span> {{ (currentAnalysis.confidence * 100).toFixed(0) }}%</div>
         </div>
         <div v-if="currentAnalysis && currentAnalysis.peaks.length > 1">
           <span class="text-green-400">主要峰值:</span>
@@ -98,10 +104,9 @@
       </div>
     </div>
     
-    <!-- 提示信息 -->
-    <div v-if="!audioBuffer && !isProcessing" class="p-3 bg-gray-500/10 border border-gray-500/20 rounded-lg">
-      <p class="text-sm text-gray-400">
-        💡 上传音频文件后，将自动进行分析处理。音频播放控制通过主控制面板的"开始/暂停"按钮进行。
+    <div v-if="!audioBuffer && !isProcessing" class="p-2.5 bg-gray-700/50 border border-gray-600/30 rounded-sm">
+      <p class="text-xs text-gray-400">
+        <span class="font-semibold">💡 提示:</span> 上传音频文件后将自动分析。播放控制请使用主控制面板的 "开始/暂停" 按钮。
       </p>
     </div>
   </div>
@@ -767,7 +772,7 @@ function getDetailedAudioAnalysis() {
 function resetFrequencyAnalysis() {
   frequencyHistory = []
   lastDominantFreq = 0
-  console.log('�� 频率分析状态已重置')
+  console.log('频率分析状态已重置')
 }
 
 // 检查是否有可用的音频文件
@@ -787,4 +792,12 @@ defineExpose({
   resetFrequencyAnalysis,
   hasAudioFile
 })
-</script> 
+</script>
+
+<style scoped>
+/* Minimal additional styles, Tailwind should cover most */
+.text-2xs {
+  font-size: 0.625rem; /* 10px */
+  line-height: 0.875rem; /* 14px */
+}
+</style> 
