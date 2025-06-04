@@ -161,7 +161,9 @@ function handleRodConfigUpdate(config) {
   currentConfig.value = { ...currentConfig.value, ...config }
   if (rodManager) {
     // 传递基础杆件参数，RodManager内部会根据显示模式决定如何使用它们
-    rodManager.setBaseRodParams(config) 
+    rodManager.setBaseRodParams(config)
+    // 当基础杆件参数（如直径）更新后，需要重新生成所有杆件以反映变化
+    rodManager.createAllRods(); 
   }
 }
 
@@ -314,27 +316,20 @@ function handleAudioSettings(enabled) {
   audioEnabled.value = enabled
   console.log('音频设置:', enabled ? '启用' : '禁用')
   
-  if (audioGenerator) {
-    if (!enabled && audioGenerator.isPlaying) {
-      // 关闭音频时停止播放
-      audioGenerator.stop()
-    } else if (enabled && isSimulationRunning.value) {
-      // 开启音频且模拟正在运行时开始播放
-      if (currentConfig.value.type === 'sine') {
-        audioGenerator.startSineWave(currentConfig.value.frequency, 0.1)
-      } else if (currentConfig.value.type === 'audio') {
-        if (audioPlayer.value) {
-          audioPlayer.value.startAudioExcitation()
-        }
-      }
-    }
-  }
-  
-  // 同时控制AudioPlayer组件的音频播放
+  // 控制AudioPlayer组件的音频输出
   if (audioPlayer.value) {
     audioPlayer.value.setAudioEnabled(enabled)
     // 确保AudioPlayer有频率变化回调
     audioPlayer.value.setFrequencyChangeCallback(handleAudioFrequencyChange)
+  }
+  
+  // 控制audioGenerator的音频输出（如果存在）
+  if (audioGenerator && audioGenerator.gainNode) {
+    if (enabled) {
+      audioGenerator.gainNode.gain.setValueAtTime(1.0, audioGenerator.audioContext.currentTime)
+    } else {
+      audioGenerator.gainNode.gain.setValueAtTime(0.0, audioGenerator.audioContext.currentTime)
+    }
   }
 }
 
@@ -455,6 +450,32 @@ function convertToCSV(data) {
   
   return [csvHeaders, ...csvRows].join('\n')
 }
+
+function handleAudioPlaybackEnded() {
+  console.log('App.vue: Audio playback has ended.');
+  if (currentConfig.value.type === 'audio' && isSimulationRunning.value) {
+    console.log('App.vue: Stopping audio-driven simulation.');
+    isSimulationRunning.value = false;
+    if (rodManager) {
+      rodManager.togglePlayPause(false); // Or a more specific stop method if available
+    }
+    if (vibrationControls.value) {
+      vibrationControls.value.setRunningState(false);
+    }
+    if (visualization) {
+      // visualization.clearWaveformPlot(); // This clears the D3 plot
+      visualization.clearWaveformData(selectedRodIndex.value); // Clears data for the current rod
+      visualization.updateWaveformPlot([], selectedRodIndex.value); // Pass empty data to effectively clear the plot line
+      // If a general clear for all waveform data is needed or preferred:
+      // visualization.clearWaveformData(); 
+      // visualization.clearWaveformPlot(); 
+    }
+    // Optionally, reset the excitation type or frequency if desired
+    // currentConfig.value.type = 'sine'; // Example: revert to sine
+    // currentConfig.value.frequency = 100; // Example: revert to default frequency
+    // handleExcitationConfigUpdate(currentConfig.value); // Propagate this change
+  }
+}
 </script>
 
 <template>
@@ -466,11 +487,11 @@ function convertToCSV(data) {
     </header>
 
     <!-- 主体内容 -->
-    <main class="flex-grow container mx-auto px-2 py-2 lg:px-4 lg:py-4">
+    <main class="flex-grow container mx-auto px-2 py-2 lg:px-2 lg:py-2">
       <div class="grid grid-cols-1 lg:grid-cols-12 lg:gap-4 h-full">
         
         <!-- 左侧控制面板 -->
-        <div class="lg:col-span-4 space-y-3 overflow-y-auto pr-1">
+        <div class="lg:col-span-4 space-y-3 overflow-y-auto pr-0">
           <VibrationControls
             ref="vibrationControls"
             @update-rod-config="handleRodConfigUpdate"
@@ -482,25 +503,26 @@ function convertToCSV(data) {
             @select-rod="handleRodSelection"
             @update-audio-settings="handleAudioSettings"
             @update-display-mode="handleDisplayModeUpdate"
-            class="bg-gray-800 p-3 rounded-md border border-gray-700"
+            class="bg-gray-800 p-3 border border-gray-700"
           />
           
           <AudioPlayer 
             ref="audioPlayer" 
-            class="bg-gray-800 p-3 rounded-md border border-gray-700"
+            class="bg-gray-800 p-1  border border-gray-700"
             @frequency-change="handleAudioFrequencyChange" 
-            @audio-processed-successfully="handleAudioProcessed" />
+            @audio-processed-successfully="handleAudioProcessed"
+            @audio-playback-ended="handleAudioPlaybackEnded" />
         </div>
 
         <!-- 右侧可视化区域 -->
         <div class="lg:col-span-8 space-y-3 overflow-y-auto pl-1">
           <!-- 3D可视化 -->
-          <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+          <div class="bg-gray-800 p-3  border border-gray-700">
             <h3 class="text-lg font-semibold text-white mb-2">3D振动可视化</h3>
             <div 
               ref="threejsContainer"
               id="threejs-container"
-              class="h-64 md:h-80 bg-black rounded relative overflow-hidden border border-gray-700"
+              class="h-64 md:h-80 bg-black relative overflow-hidden border border-gray-700"
             >
               <div 
                 v-if="!is3DInitialized"
@@ -517,7 +539,7 @@ function convertToCSV(data) {
           <!-- 图表可视化 -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <!-- 波形图 -->
-            <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+            <div class="bg-gray-800 p-1 border border-gray-700">
               <div class="flex justify-between items-center mb-2">
                 <h4 class="text-md font-medium text-white">振动波形</h4>
                 <div class="flex items-center space-x-1">
@@ -525,7 +547,7 @@ function convertToCSV(data) {
                   <select 
                     v-model="selectedRodIndex"
                     @change="handleRodSelectionChange"
-                    class="dark-select-options px-2 py-0.5 text-xs bg-gray-700 border border-gray-600 rounded text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    class="dark-select-options px-2 py-0.5 text-xs bg-gray-700 border border-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option v-for="i in currentConfig.rodCount" :key="i-1" :value="i-1">
                       杆件{{ i }} ({{ getRodLength(i-1) }}mm)
@@ -542,7 +564,7 @@ function convertToCSV(data) {
             </div>
 
             <!-- 频率图 -->
-            <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+            <div class="bg-gray-800 p-1 border border-gray-700">
               <h4 class="text-md font-medium text-white mb-2">各杆件响应强度</h4>
               <div class="chart-container bg-gray-850 rounded border border-gray-700">
                 <div id="frequency-plot" class="w-full h-56"></div>
@@ -554,7 +576,7 @@ function convertToCSV(data) {
           </div>
 
           <!-- 共振分析图 -->
-          <div class="bg-gray-800 p-3 rounded-md border border-gray-700">
+          <div class="bg-gray-800 p-3  border border-gray-700">
             <h3 class="text-md font-medium text-white mb-2">共振分析</h3>
             <div class="chart-container bg-gray-850 rounded border border-gray-700">
               <div id="resonance-plot" class="w-full h-56"></div>
@@ -633,7 +655,7 @@ function convertToCSV(data) {
 .lg\:col-span-4.overflow-y-auto::-webkit-scrollbar-thumb,
 .lg\:col-span-8.overflow-y-auto::-webkit-scrollbar-thumb {
   background: #4b5563; /* Tailwind gray-600 */
-  border-radius: 3px;
+  border-radius: 1px;
 }
 .lg\:col-span-4.overflow-y-auto::-webkit-scrollbar-thumb:hover,
 .lg\:col-span-8.overflow-y-auto::-webkit-scrollbar-thumb:hover {

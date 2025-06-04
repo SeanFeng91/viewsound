@@ -9,14 +9,14 @@
         type="file" 
         accept="audio/*" 
         @change="handleFileChange"
-        class="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-sm text-gray-200 text-xs 
+        class="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 text-gray-200 text-xs 
                file:mr-2 file:py-1 file:px-3 file:border-0 file:text-xs file:font-semibold 
-               file:bg-blue-600 file:text-white file:rounded-sm file:cursor-pointer hover:file:bg-blue-700 
+               file:bg-blue-600 file:text-white file: file:cursor-pointer hover:file:bg-blue-700 
                focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
       />
     </div>
     
-    <div v-if="isProcessing" class="p-2.5 bg-blue-600/30 border border-blue-500/50 rounded-sm">
+    <div v-if="isProcessing" class="p-2.5 bg-blue-600/30 border border-blue-500/50">
       <div class="flex items-center text-blue-300 text-xs">
         <svg class="animate-spin h-4 w-4 text-blue-300 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -26,7 +26,7 @@
       </div>
     </div>
     
-    <div v-if="audioInfo && audioBuffer" class="p-2.5 bg-green-600/30 border border-green-500/50 rounded-sm space-y-1.5">
+    <div v-if="audioInfo && audioBuffer" class="p-2.5 bg-green-600/30 border border-green-500/50  space-y-1.5">
       <div class="flex items-center text-green-300 mb-1 text-xs font-medium">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
@@ -42,28 +42,50 @@
     </div>
     
     <div v-if="audioBuffer" class="space-y-1.5">
+      <div class="flex justify-between text-xs text-gray-400">
+        <span>{{ formatTime(currentTime) }}</span>
+        <span>{{ formatTime(duration) }}</span>
+      </div>
+      <div 
+        ref="timelineTrack"
+        @click="seekOnTimelineClick"
+        class="h-2.5 bg-gray-600 rounded-full cursor-pointer relative group"
+      >
+        <div 
+          class="h-full bg-blue-500 rounded-full"
+          :style="{ width: progressPercentage + '%' }"
+        ></div>
+        <div 
+          class="absolute top-1/2 h-3.5 w-3.5 bg-white rounded-full shadow border-2 border-blue-500 -translate-y-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+          :style="{ left: progressPercentage + '%' }"
+          aria-hidden="true"
+        ></div>
+      </div>
+    </div>
+    
+    <div v-if="audioBuffer" class="space-y-1.5">
       <label class="block text-xs font-medium text-gray-300">波形显示</label>
       <div 
         ref="waveformContainer"
-        class="h-24 relative overflow-hidden bg-gray-700 rounded-sm border border-gray-600 group"
+        class="h-24 relative overflow-hidden bg-gray-700  border border-gray-600 group"
       >
         <canvas 
           ref="waveformCanvas"
-          class="absolute inset-0 w-full h-full cursor-pointer"
+          class="absolute inset-0 w-full h-full" 
           @mousemove="onWaveformHover"
           @mouseleave="clearHoverTime"
-          @click="seekTo"
         ></canvas>
-        <div v-if="hoverTime !== null && waveformContainer" 
+        <div v-if="hoverTime !== null && waveformContainer && waveformCanvas" 
              class="absolute top-0 bottom-0 border-l border-dashed border-yellow-400 pointer-events-none"
-             :style="{ left: (hoverTime / duration) * waveformContainer.clientWidth + 'px' }">
+             :style="{ left: (hoverTime / duration) * waveformCanvas.width + 'px' }" >
             <span class="absolute top-0 -translate-x-1/2 bg-gray-800 text-yellow-400 text-2xs px-1 rounded-b-sm">{{ formatTime(hoverTime) }}</span>
         </div>
         <div 
-          v-if="isPlaying && duration > 0"
+          v-if="isPlaying && duration > 0 && waveformCanvas"
           class="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none transition-transform duration-100 ease-linear"
-          :style="{ transform: 'translateX(' + progressPixel + 'px)' }"
-        ></div>
+          :style="{ transform: 'translateX(' + (currentTime / duration * waveformCanvas.width) + 'px)' }"
+          >
+      </div>
       </div>
     </div>
     
@@ -71,7 +93,7 @@
       <label class="block text-xs font-medium text-gray-300">频谱分析</label>
       <div 
         ref="spectrumContainer"
-        class="h-20 bg-gray-700 rounded-sm border border-gray-600"
+        class="h-20 bg-gray-700 border border-gray-600"
       >
         <canvas 
           ref="spectrumCanvas"
@@ -80,12 +102,12 @@
       </div>
     </div>
     
-    <div v-if="isPlaying && isExcitationMode" class="p-2.5 bg-gray-700/70 rounded-sm border border-gray-600/50 space-y-1.5">
+    <div v-if="isPlaying && isExcitationMode" class="p-2.5 bg-gray-700/70 border border-gray-600/50 space-y-1.5">
       <div class="flex justify-between items-center">
         <span class="text-xs font-medium text-gray-200">实时频率分析</span>
         <button 
           @click="resetFrequencyAnalysis"
-          class="px-2 py-0.5 text-2xs bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-sm transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500"
+          class="px-2 py-0.5 text-2xs bg-gray-600 hover:bg-gray-500 text-gray-200 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           重置
         </button>
@@ -104,7 +126,7 @@
       </div>
     </div>
     
-    <div v-if="!audioBuffer && !isProcessing" class="p-2.5 bg-gray-700/50 border border-gray-600/30 rounded-sm">
+    <div v-if="!audioBuffer && !isProcessing" class="p-2.5 bg-gray-700/50 border border-gray-600/30 ">
       <p class="text-xs text-gray-400">
         <span class="font-semibold">💡 提示:</span> 上传音频文件后将自动分析。播放控制请使用主控制面板的 "开始/暂停" 按钮。
       </p>
@@ -121,6 +143,7 @@ const waveformContainer = ref(null)
 const waveformCanvas = ref(null)
 const spectrumContainer = ref(null)
 const spectrumCanvas = ref(null)
+const timelineTrack = ref(null)
 
 const selectedFile = ref(null)
 const audioBuffer = ref(null)
@@ -131,10 +154,10 @@ const currentTime = ref(0)
 const duration = ref(0)
 const isAudioEnabled = ref(true)
 const isExcitationMode = ref(false)
-const currentAnalysis = ref(null) // 当前的频率分析结果
+const currentAnalysis = ref(null)
 
 // Emit definitions
-const emit = defineEmits(['frequency-change', 'audio-processed-successfully']);
+const emit = defineEmits(['frequency-change', 'audio-processed-successfully', 'audio-playback-ended']);
 
 // 音频相关
 let audioContext = null
@@ -143,9 +166,9 @@ let analyser = null
 let gainNode = null
 let startTime = 0
 let pauseTime = 0
-let onFrequencyChange = null // 频率变化回调函数
-let frequencyHistory = [] // 频率历史记录，用于平滑
-let lastDominantFreq = 0 // 上一次的主导频率
+let onFrequencyChange = null
+let frequencyHistory = []
+let lastDominantFreq = 0
 
 // 动画帧
 let animationFrame = null
@@ -157,6 +180,11 @@ const progressPercentage = computed(() => {
   if (duration.value === 0) return 0
   return (currentTime.value / duration.value) * 100
 })
+
+const progressPixel = computed(() => {
+  if (!waveformContainer.value || duration.value === 0) return 0;
+  return (currentTime.value / duration.value) * waveformContainer.value.clientWidth;
+});
 
 // 生命周期
 onMounted(async () => {
@@ -186,6 +214,9 @@ async function initAudioContext() {
     // 创建增益节点
     gainNode = audioContext.createGain()
     gainNode.connect(audioContext.destination)
+    
+    // 设置初始音量状态
+    gainNode.gain.setValueAtTime(isAudioEnabled.value ? 1.0 : 0.0, audioContext.currentTime)
     
     console.log('AudioContext initialized successfully')
   } catch (error) {
@@ -336,10 +367,6 @@ function stopPlayback() {
   }
   
   isPlaying.value = false
-  currentTime.value = 0
-  pauseTime = 0
-  startTime = 0
-  
   if (animationFrame) {
     cancelAnimationFrame(animationFrame)
     animationFrame = null
@@ -348,17 +375,27 @@ function stopPlayback() {
   // 重新绘制完整波形
   drawWaveform()
   
-  console.log('Playback stopped')
+  console.log('Playback stopped');
+
+  // If playback stopped because audio naturally ended, currentTime will be at or beyond duration.
+  // Reset pauseTime to 0 to signify it's not just paused but finished or fully stopped.
+  if (currentTime.value >= duration.value) {
+    pauseTime = 0;
+    // currentTime.value = 0; // Option to reset playhead to start, or leave at end (duration.value)
+  }
 }
 
 function updateProgress() {
-  if (!isPlaying.value) return
+  if (!isPlaying.value || !audioBuffer.value) return // Added audioBuffer check
   
   currentTime.value = audioContext.currentTime - startTime
   
   if (currentTime.value >= duration.value) {
-    stopPlayback()
-    return
+    currentTime.value = duration.value; // Cap currentTime at duration
+    stopPlayback();
+    console.log('Audio naturally ended. Emitting audio-playback-ended.');
+    emit('audio-playback-ended');
+    return;
   }
   
   // 绘制滚动波形
@@ -382,7 +419,7 @@ function updateProgress() {
 }
 
 function drawWaveform() {
-  if (!waveformCtx || !audioBuffer.value) return
+  if (!waveformCtx || !audioBuffer.value || !waveformCanvas.value) return;
   
   const canvas = waveformCanvas.value
   const ctx = waveformCtx
@@ -502,20 +539,25 @@ function drawSpectrum() {
 }
 
 function seekTo(event) {
-  if (!audioBuffer.value) return
+  if (!audioBuffer.value || !event.target) return;
   
-  const rect = event.target.getBoundingClientRect()
-  const clickX = event.clientX - rect.left
-  const percentage = clickX / rect.width
-  const newTime = percentage * duration.value
+  const canvas = event.target; // Assuming event.target is the waveformCanvas
+  const rect = canvas.getBoundingClientRect();
+  const clickX = event.clientX - rect.left;
+  let percentage = clickX / rect.width;
+  percentage = Math.max(0, Math.min(1, percentage)); // Clamp between 0 and 1
+
+  const newTime = percentage * duration.value;
   
-  currentTime.value = newTime
-  pauseTime = newTime
+  currentTime.value = newTime;
+  pauseTime = newTime; 
   
   if (isPlaying.value) {
-    // 重新开始播放
-    pausePlayback()
-    startPlayback()
+    pausePlayback();
+    startPlayback();
+  } else {
+    // If paused, update the static waveform to the new seek position
+    drawWaveform(); 
   }
 }
 
@@ -531,8 +573,11 @@ function onWaveformHover(event) {
 
 // 音频激励相关方法
 function startAudioExcitation() {
-  if (!audioBuffer.value || !isAudioEnabled.value) {
-    console.warn('无音频缓冲区或音频已禁用，无法开始激励')
+  console.log('尝试开始音频激励模式...')
+  console.log('audioBuffer.value:', !!audioBuffer.value)
+  
+  if (!audioBuffer.value) {
+    console.warn('无音频缓冲区，无法开始激励')
     return false
   }
   
@@ -540,7 +585,10 @@ function startAudioExcitation() {
   
   // 如果不在播放状态，开始播放
   if (!isPlaying.value) {
+    console.log('开始播放音频...')
     startPlayback()
+  } else {
+    console.log('音频已在播放中')
   }
   
   console.log('🎵 开始音频激励模式')
@@ -561,12 +609,18 @@ function stopAudioExcitation() {
 function setAudioEnabled(enabled) {
   isAudioEnabled.value = enabled
   
-  // 如果禁用音频且正在激励模式，停止激励
-  if (!enabled && isExcitationMode.value) {
-    stopAudioExcitation()
+  // 控制音频输出的静音状态
+  if (gainNode) {
+    if (enabled) {
+      gainNode.gain.setValueAtTime(1.0, audioContext.currentTime) // 恢复音量
+      console.log('恢复音频输出')
+    } else {
+      gainNode.gain.setValueAtTime(0.0, audioContext.currentTime) // 静音
+      console.log('静音音频输出')
+    }
   }
   
-  console.log('🔊 音频激励', enabled ? '启用' : '禁用')
+  console.log('🔊 音频输出', enabled ? '启用' : '静音')
 }
 
 // 获取当前音频的主要频率成分（用于振动分析）
@@ -808,6 +862,29 @@ function resetFrequencyAnalysis() {
 // 检查是否有可用的音频文件
 function hasAudioFile() {
   return !!(audioBuffer.value && selectedFile.value)
+}
+
+// New seek function for the dedicated timeline bar
+function seekOnTimelineClick(event) {
+  if (!audioBuffer.value || !timelineTrack.value) return;
+
+  const rect = timelineTrack.value.getBoundingClientRect();
+  const clickX = event.clientX - rect.left;
+  let percentage = clickX / rect.width;
+  percentage = Math.max(0, Math.min(1, percentage)); // Clamp between 0 and 1
+
+  const newTime = percentage * duration.value;
+  
+  currentTime.value = newTime;
+  pauseTime = newTime; 
+  
+  if (isPlaying.value) {
+    pausePlayback();
+    startPlayback();
+  } else {
+    // If paused, update the static waveform to the new seek position
+    drawWaveform(); 
+  }
 }
 
 // 暴露方法供父组件调用

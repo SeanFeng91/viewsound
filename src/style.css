@@ -52,11 +52,11 @@ select.dark-select-options option:selected {
 }
 
 /* 应用的全局样式，确保主题一致性 */
-* {
+/* * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-}
+} */
 
 body {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -85,8 +85,8 @@ h1 {
   line-height: 1.1;
 }
 
-button {
-  border-radius: 8px;
+/* button {
+  border-radius: 1px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
@@ -102,7 +102,7 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
-}
+} */
 
 #app {
   max-width: 1280px;
@@ -119,19 +119,20 @@ button:focus-visible {
   a:hover {
     color: #747bff;
   }
-  button {
+  /* button {
     background-color: #2d3748;
-  }
+  } */
 }
 
 /* 图表容器样式 */
 .chart-container {
   width: 100%;
   height: auto;
-  margin: 10px 0;
-  padding: 10px;
+  height: 300px;
+  margin: 4px 0;
+  padding: 4px;
   background-color: #1f2937;
-  border-radius: 8px;
+  border-radius: 1px;
   border: 1px solid #374151;
 }
 
@@ -143,7 +144,7 @@ select {
   background-color: #374151 !important;
   color: #e2e8f0 !important;
   border: 1px solid #6b7280 !important;
-  border-radius: 6px !important;
+  border-radius: 1px !important;
   padding: 8px 12px !important;
   font-size: 14px !important;
   cursor: pointer !important;
@@ -185,7 +186,7 @@ select.dark-select-options option:hover {
 /* D3.js 图表样式 */
 .chart-container svg {
   background-color: #1f2937;
-  border-radius: 6px;
+  border-radius: 1px;
 }
 
 /* D3 坐标轴样式 */

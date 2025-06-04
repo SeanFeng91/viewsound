@@ -53,7 +53,7 @@ h3 {
     position: absolute;
     border: 1px solid var(--color-border);
     background: var(--color-background);
-    border-radius: 8px;
+    border-radius: 1px;
     width: 50px;
     height: 50px;
   }

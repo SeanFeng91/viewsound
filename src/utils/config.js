@@ -27,7 +27,7 @@ const CONFIG = {
         },
         countRange: {
             min: 1,                     // 最少杆件数
-            max: 20,                    // 最多杆件数
+            max: 50,                    // 最多杆件数
             default: 5                  // 默认杆件数
         }
     },
