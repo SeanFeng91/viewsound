@@ -988,4 +988,53 @@ this.updateVisualization({
 
 *记录时间：2024年12月18日*  
 *开发者：AI Assistant*  
-*项目：多杆件振动模拟系统* 
+*项目：多杆件振动模拟系统*
+
+---
+
+### 🔩 空间雕塑模式核心实现回顾
+
+为了实现空间雕塑功能，主要涉及以下几个核心步骤和模块的修改：
+
+1.  **创建独立的雕塑逻辑模块 (`sculpture-manager.js`)**:
+    *   新建 `src/utils/sculpture-manager.js` 文件，用于封装所有与雕塑形态生成相关的复杂计算逻辑，保持 `rod-manager.js` 的整洁。
+    *   在该文件中定义 `SculptureManager` 类。
+    *   核心方法 `generateSculptureRods(config)`：接收一个配置对象（包含雕塑类型、杆件数量、尺寸参数等），根据配置调用相应的私有方法生成特定形态的杆件数据。
+    *   为每种雕塑类型（如 `radial`, `wing`, `spiral`, `butterfly`, `ring`）实现各自的生成函数（如 `generateRadialRods()`, `generateWingRods()` 等）。这些函数计算每个杆件的：
+        *   `position`: `{x, y, z}` 空间位置 (单位: 米)。
+        *   `direction`: `{x, y, z}` 单位方向向量，指明杆件的朝向。
+        *   `length`: 杆件的长度 (单位: 米，注意单位转换，如从mm配置到m实际使用)。
+    *   `SculptureManager` 最终返回一个包含这些杆件数据对象的数组。
+
+2.  **集成雕塑模式到 `rod-manager.js`**:
+    *   在 `RodManager` 类中引入（`import`）`SculptureManager`。
+    *   在 `displayModeConfig` 中添加新的显示模式 `'sculpture'`。
+    *   实现 `createSculptureRods(material, rodRadius)` 方法：
+        *   实例化 `sculptureManager = new SculptureManager()`。
+        *   从 `this.displayModeConfig` 中提取雕塑相关参数（如 `sculptureType`, `sculptureRodCount`, `sculptureBaseLength` 等），组装成传递给 `SculptureManager` 的配置对象 `sculptureConfig`。注意单位的正确处理（例如，UI可能是mm，`SculptureManager`内部处理可能是mm，但最终给 `createSingleRod` 的长度是米）。
+        *   调用 `sculptureManager.generateSculptureRods(sculptureConfig)` 获取杆件数据数组。
+        *   遍历返回的 `sculptureRods` 数组：
+            *   对于每个杆件数据对象，调用 `this.createSingleRod(length, rodRadius, material.color)` 创建实际的 `THREE.Mesh` 对象。
+            *   设置杆件的 `position`。 
+            *   根据杆件数据中的 `direction` 和杆件的默认向上方向 (`new THREE.Vector3(0, 1, 0)`)，使用 `THREE.Quaternion().setFromUnitVectors()` 计算旋转四元数，并通过 `rod.setRotationFromQuaternion()` 设置杆件的正确朝向。
+            *   存储杆件的 `userData`，包括其长度、索引、原始雕塑数据等。
+            *   将创建的杆件添加到场景 (`this.scene.add(rod)`) 和内部列表 (`this.rods.push(rod)`)。
+
+3.  **更新全局配置 (`rod-manager.js`)**:
+    *   在 `RodManager` 的 `constructor` 中，对 `this.displayModeConfig` 对象进行扩展，加入雕塑模式所需的特定配置项及其默认值。例如：
+        *   `sculptureType`: (String) 雕塑的类型，如 'radial'。
+        *   `sculptureRodCount`: (Number) 雕塑中的杆件数量。
+        *   `sculptureBaseLength`: (Number) 杆件的基础长度 (UI单位通常是mm)。
+        *   `sculptureLengthVariation`: (Number) 杆件长度的变化范围 (UI单位mm)。
+        *   `sculptureScale`: (Number) 雕塑整体的缩放因子，影响如半径、高度等。
+        *   `spiralTurns`: (Number) 针对螺旋形态的圈数。
+
+4.  **UI界面集成 (`VibrationControls.vue`)**:
+    *   在组件的模板中，为雕塑模式添加新的UI控件，例如：
+        *   一个下拉选择框，用于选择 `sculptureType`。
+        *   多个滑块或输入框，用于调整 `sculptureRodCount`, `sculptureBaseLength`, `sculptureLengthVariation`, `sculptureScale`, `spiralTurns` 等参数。
+    *   这些UI控件通过 `v-model` 绑定到 `VibrationControls.vue` 组件内部的响应式数据（通常是 `displayModeConfig` 的一部分）。
+    *   当这些UI控件的值发生变化时，会触发更新事件 (如 `@update-display-mode-config`)，将最新的 `displayModeConfig` 对象传递给父组件 `App.vue`。
+    *   `App.vue` 接收到更新后，再调用 `rodManager.setDisplayMode()` 和 `rodManager.createAllRods()` 来应用新的配置并重新生成场景。
+
+通过以上步骤，空间雕塑功能得以实现，用户可以通过UI选择不同的雕塑形态并调整其参数，动态生成复杂的三维杆件排列。 
