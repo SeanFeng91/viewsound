@@ -817,4 +817,89 @@ this.updateVisualization({
 
 *记录时间：2024年12月19日*  
 *开发者：AI Assistant*  
+*项目：多杆件振动模拟系统*
+
+---
+
+## 2024-07-18 修改回顾
+
+### 1. 杆件间距调整功能
+
+**提出的问题**:
+用户希望能够调整杆件的间距，包括线性排列和阵列排列模式。
+
+**修改的内容**:
+
+*   **`src/utils/rod-manager.js`**:
+    *   在 `constructor` 的 `baseRodConfig` 中添加 `spacing: 15` (单位mm) 属性，用于线性模式下的默认杆件间距。
+    *   在 `constructor` 的 `displayModeConfig` 中添加 `spacing: 20` (单位mm) 属性，用于阵列模式下的默认杆件间距。
+    *   修改 `createLinearRods()` 方法，使其使用 `this.baseRodConfig.spacing / 1000` (转换为米) 作为杆件间距。
+    *   修改 `createArrayRods()` 方法，使其使用 `this.displayModeConfig.spacing / 1000` (转换为米) 作为杆件间距。
+    *   在 `setBaseRodParams()` 方法中，添加了对传入的 `spacing` 参数的处理，以更新 `this.baseRodConfig.spacing`。
+    *   在 `setDisplayMode()` 方法中，确保了可以更新 `this.displayModeConfig` 中的 `spacing` 参数 (主要影响阵列模式)。
+
+*   **`src/components/VibrationControls.vue`**:
+    *   **UI添加与布局**: 
+        *   在"基础杆件参数"部分，为线性模式添加了一个新的"杆件间距"滑块控件及其标签。
+        *   在"函数阵列模式参数"的UI中，添加了一个新的"阵列间距"滑块控件及其标签。
+        *   使用Tailwind CSS类 (如 `grid`, `gap-2`, `space-y-1`, `flex`, `justify-between`, `items-center`) 调整了相关区域的布局以容纳新的控件。
+    *   **条件样式**: 
+        *   为线性模式的"杆件间距"控件及其相关UI元素（如标签、数值显示）应用了条件类 `:class="{ 'opacity-50': displayModeConfig.mode !== 'linear' }"`。
+        *   为线性模式的"杆件间距"滑块输入控件添加了 `:disabled="displayModeConfig.mode !== 'linear'"` 属性。
+        *   这些确保了当显示模式不为 'linear' 时，线性间距控件会视觉上变暗且不可交互。
+    *   **滑块样式**: 新添加的滑块控件（`type="range"`）自动继承了项目中已定义的自定义滑块样式，以保持视觉一致性。
+    *   **数据绑定与逻辑**:
+        *   在 `rodConfig`响应式数据中，添加了 `spacing: 10` 属性，作为线性模式间距的初始值。
+        *   在 `displayModeConfig` 响应式数据中，添加了 `arraySpacing: 20` 属性，作为阵列模式间距的初始值。
+        *   修改了 `updateDisplayModeConfig()` 函数，当模式为 'array' 时，将 `displayModeConfig.value.arraySpacing` 作为 `spacing` 键的值传递给父组件。
+        *   修改了 `updateRodConfig()` 函数，确保将 `rodConfig.value.spacing` 传递给父组件。
+
+### 2. 修复：VibrationControls 组件初始参数与3D场景同步
+
+**提出的问题**:
+用户在 `VibrationControls.vue` 中修改了 `rodConfig` 的初始值 (例如，杆件数量从10改为20，直径从5mm改为2mm)，但3D 场景在首次加载时并未反映这些更改，而是使用了 `RodManager` 内部的默认值。
+
+**修改的内容**:
+
+*   **`src/components/VibrationControls.vue`**:
+    *   添加了 `getCurrentRodConfig()` 方法，该方法返回当前 `rodConfig` ref 对象的浅拷贝。
+    *   添加了 `getCurrentDisplayModeConfig()` 方法，该方法返回当前 `displayModeConfig` ref 对象的浅拷贝。
+    *   通过 `defineExpose` 暴露了这两个新方法，使得父组件 `App.vue` 可以调用它们。
+
+*   **`src/App.vue`**:
+    *   在 `initializeVibrationEngine()` 函数内部，紧随 `rodManager.init()` 成功之后：
+        *   判断 `vibrationControls.value` 是否存在。
+        *   如果存在，则调用 `vibrationControls.value.getCurrentRodConfig()` 来获取 `VibrationControls` 组件当前的杆件配置。
+        *   同时调用 `vibrationControls.value.getCurrentDisplayModeConfig()` 来获取当前的显示模式配置。
+        *   将获取到的杆件配置通过 `rodManager.setBaseRodParams()` 方法传递给 `rodManager` 实例。
+        *   将获取到的显示模式配置通过 `rodManager.setDisplayMode()` 方法传递给 `rodManager` 实例。
+        *   调用 `rodManager.createAllRods()` 方法，强制 `rodManager` 使用这些从 `VibrationControls` 获取的初始参数重新创建所有杆件。
+
+### 3. 修复：振动波形图X轴时间显示问题
+
+**提出的问题**:
+用户反馈振动波形图在点击开始播放后，其X轴（时间轴）不是从0秒开始绘制，导致时间显示不正确。
+
+**修改的内容**:
+
+*   **`src/utils/rod-manager.js`**:
+    *   在 `constructor` 中初始化 `this.startTime = 0`。
+    *   在 `togglePlayPause()` 方法中，当 `this.isPlaying` 变为 `true`（即开始播放时），将 `this.startTime` 设置为 `this.clock.getElapsedTime()`，以记录播放开始的精确时刻。
+    *   在 `reset()` 方法中，将 `this.startTime` 重置为 `0`。
+    *   在 `startAnimation()` 方法内的 `animate` 函数中，修改了 `this.currentTime` 的计算逻辑，使其变为 `(elapsedTime - this.startTime) * this.timeScale`。这确保了 `this.currentTime` 是相对于播放开始时刻的相对时间。
+
+*   **`src/utils/visualization.js`** (基于用户提供的代码和图片推断):
+    *   在 `updateWaveformPlot` 方法中：
+        *   当计算 `windowStart` 时，确保其值为 `Math.max(0, currentTime - this.timeWindow)`，防止出现负的起始时间。这里的 `currentTime` 是从 `rodData` 中获取的最新时间点。
+    *   在 `renderWaveformData` 方法中：
+        *   当设置X轴的域 `xScale.domain()` 时，如果 `windowStart` 不为null，则使用 `[windowStart, windowStart + this.timeWindow]` 作为时间范围。这使得X轴能够正确地从计算出的 `windowStart` 开始，并显示一个固定宽度的滚动时间窗口。
+
+---
+
+以上是今天进行的主要修改。
+
+---
+
+*记录时间：2024年12月19日*  
+*开发者：AI Assistant*  
 *项目：多杆件振动模拟系统* 
