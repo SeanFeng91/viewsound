@@ -876,11 +876,67 @@ class RodManager {
     }
 
     /**
-     * 设置选定的杆件索引
-     * @param {number} index - 杆件索引（0开始）
+     * 设置选中的杆件索引
+     * @param {number} index - 杆件索引
      */
     setSelectedRodIndex(index) {
-        this.selectedRodIndex = index;
+        this.selectedRodIndex = index
+        console.log(`[RodManager] 选中杆件: ${index}`)
+    }
+
+    /**
+     * 设置预设视角
+     * @param {string} viewType - 视角类型: 'front', 'top', 'angle45', 'side'
+     */
+    setPresetView(viewType) {
+        if (!this.camera) return
+        
+        // 获取杆件边界信息
+        let centerX = 0, centerZ = 0, maxY = 0.5
+        if (this.rods.length > 0) {
+            let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
+            this.rods.forEach(rod => {
+                minX = Math.min(minX, rod.position.x)
+                maxX = Math.max(maxX, rod.position.x)
+                minZ = Math.min(minZ, rod.position.z)
+                maxZ = Math.max(maxZ, rod.position.z)
+                maxY = Math.max(maxY, rod.userData.length)
+            })
+            centerX = (minX + maxX) / 2
+            centerZ = (minZ + maxZ) / 2
+        }
+        
+        const distance = 2.0 // 观察距离
+        const lookAtPoint = { x: centerX, y: maxY / 3, z: centerZ }
+        
+        switch (viewType) {
+            case 'front': // 正视图 - 从前方Z轴正方向观察
+                this.camera.position.set(centerX, maxY / 2, centerZ + distance)
+                this.camera.lookAt(lookAtPoint.x, lookAtPoint.y, lookAtPoint.z)
+                break
+                
+            case 'top': // 俯视图 - 从上方Y轴正方向观察
+                this.camera.position.set(centerX, distance * 1.5, centerZ)
+                this.camera.lookAt(lookAtPoint.x, lookAtPoint.y, lookAtPoint.z)
+                break
+                
+            case 'side': // 侧视图 - 从右侧X轴正方向观察
+                this.camera.position.set(centerX + distance, maxY / 2, centerZ)
+                this.camera.lookAt(lookAtPoint.x, lookAtPoint.y, lookAtPoint.z)
+                break
+                
+            case 'angle45': // 45度斜视图 - 经典等轴测视角
+                this.camera.position.set(centerX + distance * 0.7, maxY * 0.8 + distance * 0.5, centerZ + distance * 0.7)
+                this.camera.lookAt(lookAtPoint.x, lookAtPoint.y, lookAtPoint.z)
+                break
+                
+            case 'auto': // 自动视角 - 恢复到自动计算的最佳视角
+            default:
+                this.updateCameraView()
+                break
+        }
+        
+        console.log(`[RodManager] 设置预设视角: ${viewType}`)
     }
 }
 

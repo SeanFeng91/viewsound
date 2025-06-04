@@ -528,8 +528,28 @@ function toggleFullscreen() {
       document.mozCancelFullScreen()
     } else if (document.msExitFullscreen) {
       document.msExitFullscreen()
-    }
+    } 
   }
+}
+
+// 设置3D视角
+function setViewAngle(viewType) {
+  if (rodManager) {
+    rodManager.setPresetView(viewType)
+  }
+  console.log(`切换到${getViewName(viewType)}视角`)
+}
+
+// 获取视角名称
+function getViewName(viewType) {
+  const viewNames = {
+    'front': '正视',
+    'top': '俯视', 
+    'side': '侧视',
+    'angle45': '斜视',
+    'auto': '自动'
+  }
+  return viewNames[viewType] || '未知'
 }
 </script>
 
@@ -575,20 +595,62 @@ function toggleFullscreen() {
           <div class="bg-gray-800 p-3  border border-gray-700">
             <div class="flex justify-between items-center mb-2">
               <h3 class="text-lg font-semibold text-white">3D振动可视化</h3>
-              <button 
-                @click="toggleFullscreen"
-                class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 border border-gray-600 bg-gray-800"
-                :title="isFullscreen ? '退出全屏 (ESC)' : '全屏显示'"
-              >
-                <!-- 全屏图标 -->
-                <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-                <!-- 退出全屏图标 -->
-                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0 0l5.5 5.5" />
-                </svg>
-              </button>
+              <div class="flex items-center space-x-2">
+                <!-- 视角切换按钮组 -->
+                <div class="view-buttons flex border border-gray-600 bg-gray-700 overflow-hidden">
+                  <button 
+                    @click="setViewAngle('front')"
+                    class="px-2 py-1 text-xs text-gray-300 hover:text-white hover:bg-gray-600 transition-colors focus:outline-none focus:bg-blue-600"
+                    title="正视图"
+                  >
+                    正视
+                  </button>
+                  <button 
+                    @click="setViewAngle('top')"
+                    class="px-2 py-1 text-xs text-gray-300 hover:text-white hover:bg-gray-600 transition-colors focus:outline-none focus:bg-blue-600 border-l border-gray-600"
+                    title="俯视图"
+                  >
+                    俯视
+                  </button>
+                  <button 
+                    @click="setViewAngle('side')"
+                    class="px-2 py-1 text-xs text-gray-300 hover:text-white hover:bg-gray-600 transition-colors focus:outline-none focus:bg-blue-600 border-l border-gray-600"
+                    title="侧视图"
+                  >
+                    侧视
+                  </button>
+                  <button 
+                    @click="setViewAngle('angle45')"
+                    class="px-2 py-1 text-xs text-gray-300 hover:text-white hover:bg-gray-600 transition-colors focus:outline-none focus:bg-blue-600 border-l border-gray-600"
+                    title="45度斜视图"
+                  >
+                    斜视
+                  </button>
+                  <button 
+                    @click="setViewAngle('auto')"
+                    class="px-2 py-1 text-xs text-gray-300 hover:text-white hover:bg-gray-600 transition-colors focus:outline-none focus:bg-blue-600 border-l border-gray-600"
+                    title="自动最佳视角"
+                  >
+                    自动
+                  </button>
+                </div>
+                
+                <!-- 全屏按钮 -->
+                <button 
+                  @click="toggleFullscreen"
+                  class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 border border-gray-600 bg-gray-800"
+                  :title="isFullscreen ? '退出全屏 (ESC)' : '全屏显示'"
+                >
+                  <!-- 全屏图标 -->
+                  <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  <!-- 退出全屏图标 -->
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0 0l5.5 5.5" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div 
               ref="threejsContainer"
@@ -773,5 +835,32 @@ function toggleFullscreen() {
 #threejs-container.fixed canvas {
   width: 100vw !important;
   height: 100vh !important;
+}
+
+/* 视角按钮组样式 */
+.view-buttons button {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.view-buttons button:first-child {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+
+.view-buttons button:last-child {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+
+.view-buttons button:hover {
+  z-index: 1;
+  background-color: #4b5563 !important; /* Tailwind gray-600 */
+}
+
+.view-buttons button:focus {
+  z-index: 2;
+  background-color: #3b82f6 !important; /* Tailwind blue-600 */
+  color: white !important;
 }
 </style>
