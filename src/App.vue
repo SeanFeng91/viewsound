@@ -539,15 +539,15 @@ function handleAudioPlaybackEnded() {
           <!-- 图表可视化 -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <!-- 波形图 -->
-            <div class="bg-gray-800 p-1 border border-gray-700">
-              <div class="flex justify-between items-center mb-2">
-                <h4 class="text-md font-medium text-white">振动波形</h4>
+            <div class="bg-gray-800 border border-gray-700">
+              <div class="flex justify-between items-center p-2 border-b border-gray-700">
+                <h4 class="text-sm font-medium text-white">振动波形</h4>
                 <div class="flex items-center space-x-1">
                   <label class="text-xs text-gray-400">杆件:</label>
                   <select 
                     v-model="selectedRodIndex"
                     @change="handleRodSelectionChange"
-                    class="dark-select-options px-2 py-0.5 text-xs bg-gray-700 border border-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    class="dark-select-options  px-2 py-0.5 text-xs bg-gray-700 border border-gray-600 text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option v-for="i in currentConfig.rodCount" :key="i-1" :value="i-1">
                       杆件{{ i }} ({{ getRodLength(i-1) }}mm)
@@ -555,35 +555,24 @@ function handleAudioPlaybackEnded() {
                   </select>
                 </div>
               </div>
-              <div class="chart-container bg-gray-850 rounded border border-gray-700">
-                <div id="waveform-plot" class="w-full h-56"></div>
-              </div>
-              <p class="text-xs text-gray-400 mt-1">
-                📈 实时振动位移
-              </p>
+              <div id="waveform-plot" class="w-full h-56"></div>
             </div>
 
             <!-- 频率图 -->
-            <div class="bg-gray-800 p-1 border border-gray-700">
-              <h4 class="text-md font-medium text-white mb-2">各杆件响应强度</h4>
-              <div class="chart-container bg-gray-850 rounded border border-gray-700">
-                <div id="frequency-plot" class="w-full h-56"></div>
+            <div class="bg-gray-800 border border-gray-700">
+              <div class="p-2 border-b border-gray-700">
+                <h4 class="text-sm font-medium text-white">各杆件响应强度</h4>
               </div>
-              <p class="text-xs text-gray-400 mt-1">
-                📊 放大因子 (红点: 共振)
-              </p>
+              <div id="frequency-plot" class="w-full h-56"></div>
             </div>
           </div>
 
           <!-- 共振分析图 -->
-          <div class="bg-gray-800 p-3  border border-gray-700">
-            <h3 class="text-md font-medium text-white mb-2">共振分析</h3>
-            <div class="chart-container bg-gray-850 rounded border border-gray-700">
-              <div id="resonance-plot" class="w-full h-56"></div>
+          <div class="bg-gray-800 border border-gray-700">
+            <div class="p-2 border-b border-gray-700">
+              <h3 class="text-sm font-medium text-white">共振分析</h3>
             </div>
-            <p class="text-xs text-gray-400 mt-1">
-              🎯 固有频率 vs 激励频率
-            </p>
+            <div id="resonance-plot" class="w-full h-56"></div>
           </div>
         </div>
       </div>
@@ -613,6 +602,23 @@ function handleAudioPlaybackEnded() {
 /* Minimal scoped styles, relying mostly on Tailwind */
 .container {
   max-width: 100%; /* Allow full width usage within viewport constraints */
+}
+
+/* 图表容器样式 - 移除所有内边距确保图表充分利用空间 */
+#waveform-plot,
+#frequency-plot,
+#resonance-plot {
+  padding: 0;
+  margin: 0;
+  display: block;
+}
+
+#waveform-plot svg,
+#frequency-plot svg,
+#resonance-plot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* Adjustments for dark-select-options to fit new solid theme */
