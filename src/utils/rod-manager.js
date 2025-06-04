@@ -20,6 +20,7 @@ class RodManager {
         this.rods = [];
         this.originalPositions = [];
         this.currentTime = 0;
+        this.startTime = 0; // 添加开始时间记录
         this.isPlaying = false;
         this.clock = null; // 延迟初始化
         this.container = null;
@@ -645,6 +646,11 @@ class RodManager {
      */
     togglePlayPause() {
         this.isPlaying = !this.isPlaying;
+        
+        // 如果开始播放，记录当前时间作为开始时间
+        if (this.isPlaying) {
+            this.startTime = this.clock.getElapsedTime();
+        }
     }
 
     /**
@@ -652,6 +658,7 @@ class RodManager {
      */
     reset() {
         this.currentTime = 0;
+        this.startTime = 0; // 重置开始时间
         this.isPlaying = false;
         this.createAllRods();
         
@@ -712,8 +719,9 @@ class RodManager {
             requestAnimationFrame(animate);
 
             if (this.isPlaying) {
-                const deltaTime = this.clock.getDelta() * this.timeScale;
-                this.currentTime += deltaTime;
+                // 计算相对于开始时间的偏移量
+                const elapsedTime = this.clock.getElapsedTime();
+                this.currentTime = (elapsedTime - this.startTime) * this.timeScale;
                 this.updateRodDeformation();
             }
 

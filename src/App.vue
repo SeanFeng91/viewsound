@@ -540,7 +540,7 @@ function handleAudioPlaybackEnded() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <!-- 波形图 -->
             <div class="bg-gray-800 border border-gray-700">
-              <div class="flex justify-between items-center p-2 border-b border-gray-700">
+              <div class="flex justify-between items-center p-2 border-b border-gray-700 h-12">
                 <h4 class="text-sm font-medium text-white">振动波形</h4>
                 <div class="flex items-center space-x-1">
                   <label class="text-xs text-gray-400">杆件:</label>
@@ -555,15 +555,21 @@ function handleAudioPlaybackEnded() {
                   </select>
                 </div>
               </div>
-              <div id="waveform-plot" class="w-full h-56"></div>
+              <div id="waveform-plot" class="w-full h-48"></div>
+              <div class="px-2 py-1 text-xs text-gray-400 border-t border-gray-700">
+                显示所选杆件的实时振动位移随时间变化
+              </div>
             </div>
 
             <!-- 频率图 -->
             <div class="bg-gray-800 border border-gray-700">
-              <div class="p-2 border-b border-gray-700">
+              <div class="p-2 border-b border-gray-700 h-12 flex items-center">
                 <h4 class="text-sm font-medium text-white">各杆件响应强度</h4>
               </div>
-              <div id="frequency-plot" class="w-full h-56"></div>
+              <div id="frequency-plot" class="w-full h-48"></div>
+              <div class="px-2 py-1 text-xs text-gray-400 border-t border-gray-700">
+                显示不同长度杆件对当前激励频率的响应强度
+              </div>
             </div>
           </div>
 
@@ -572,7 +578,10 @@ function handleAudioPlaybackEnded() {
             <div class="p-2 border-b border-gray-700">
               <h3 class="text-sm font-medium text-white">共振分析</h3>
             </div>
-            <div id="resonance-plot" class="w-full h-56"></div>
+            <div id="resonance-plot" class="w-full h-48"></div>
+            <div class="px-2 py-1 text-xs text-gray-400 border-t border-gray-700">
+              显示各杆件固有频率与激励频率的关系，红点表示共振杆件
+            </div>
           </div>
         </div>
       </div>
