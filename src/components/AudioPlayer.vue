@@ -65,10 +65,7 @@
     
     <div v-if="audioBuffer" class="space-y-1.5">
       <label class="block text-xs font-medium text-gray-300">波形显示</label>
-      <div 
-        ref="waveformContainer"
-        class="h-24 relative overflow-hidden bg-gray-700  border border-gray-600 group"
-      >
+      <div ref="waveformContainer" class="h-24 relative overflow-hidden bg-gray-700  border border-gray-600 group">
         <canvas 
           ref="waveformCanvas"
           class="absolute inset-0 w-full h-full" 
@@ -84,7 +81,7 @@
           v-if="isPlaying && duration > 0 && waveformCanvas"
           class="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none transition-transform duration-100 ease-linear"
           :style="{ transform: 'translateX(' + (currentTime / duration * waveformCanvas.width) + 'px)' }"
-          >
+        >
       </div>
       </div>
     </div>
@@ -155,6 +152,7 @@ const duration = ref(0)
 const isAudioEnabled = ref(true)
 const isExcitationMode = ref(false)
 const currentAnalysis = ref(null)
+const hoverTime = ref(null)
 
 // Emit definitions
 const emit = defineEmits(['frequency-change', 'audio-processed-successfully', 'audio-playback-ended']);
@@ -569,6 +567,11 @@ function formatTime(seconds) {
 
 function onWaveformHover(event) {
   // 可以添加鼠标悬停显示时间信息的功能
+}
+
+// 清除悬停时间显示
+function clearHoverTime() {
+  hoverTime.value = null
 }
 
 // 音频激励相关方法
