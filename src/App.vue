@@ -90,6 +90,20 @@ async function initializeVibrationEngine() {
       }
       console.log('✓ 3D场景初始化成功')
       is3DInitialized.value = true
+      
+      // 立即同步VibrationControls的初始参数到RodManager
+      if (vibrationControls.value) {
+        // 获取VibrationControls的当前配置并应用到RodManager
+        const currentRodConfig = vibrationControls.value.getCurrentRodConfig()
+        const currentDisplayModeConfig = vibrationControls.value.getCurrentDisplayModeConfig()
+        
+        if (currentRodConfig) {
+          rodManager.setBaseRodParams(currentRodConfig)
+          rodManager.setDisplayMode(currentDisplayModeConfig)
+          rodManager.createAllRods()
+          console.log('✓ 已同步VibrationControls的初始参数:', currentRodConfig)
+        }
+      }
     }
     
     // 初始化可视化
@@ -739,11 +753,11 @@ function getViewName(viewType) {
               {{ isSimulationRunning ? '运行中' : '停止' }}
             </span>
           </div>
-          <div class="flex gap-2">
+          <!-- <div class="flex gap-2">
             <span>杆数:{{ currentConfig.rodCount }}</span>
             <span>频率:{{ currentConfig.frequency }}Hz</span>
             <span>材料:{{ getMaterialName(currentConfig.material) }}</span>
-          </div>
+          </div> -->
         </div>
       </div>
     </footer>

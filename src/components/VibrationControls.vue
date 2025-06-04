@@ -23,7 +23,6 @@
 
         <!-- 函数阵列模式参数 -->
         <div v-if="displayModeConfig.mode === 'array'" class="space-y-2 p-2 bg-gray-600">
-          <p class="text-xs text-gray-300">配置X-Y平面上的杆件阵列，杆件长度由函数确定。</p>
           
           <div class="grid grid-cols-2 gap-2">
             <div class="space-y-1">
@@ -113,6 +112,23 @@
               />
             </div>
           </div>
+          
+          <div class="grid grid-cols-1 gap-2">
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-white">阵列间距</label>
+                <span class="text-xs text-blue-400">{{ displayModeConfig.arraySpacing }}mm</span>
+              </div>
+              <input 
+                v-model.number="displayModeConfig.arraySpacing"
+                type="range" min="10" max="50" 
+                class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
+                @input="updateDisplayModeConfig"
+              />
+            </div>
+          </div>
+          <p class="text-xs text-gray-300">配置X-Y平面上的杆件阵列，杆件长度由函数确定。</p>
+
         </div>
         
         <div v-if="displayModeConfig.mode === 'sculpture'" class="p-2 bg-gray-600 text-xs text-gray-300">
@@ -165,6 +181,20 @@
             <input 
               v-model.number="rodConfig.lengthStep"
               type="range" min="1" max="50" 
+              class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
+              @input="updateRodConfig"
+              :disabled="displayModeConfig.mode !== 'linear'"
+            />
+          </div>
+          
+          <div class="space-y-1" :class="{ 'opacity-50': displayModeConfig.mode !== 'linear' }">
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-medium text-white">杆件间距 (线性)</label>
+              <span class="text-xs text-blue-400">{{ rodConfig.spacing }}mm</span>
+            </div>
+            <input 
+              v-model.number="rodConfig.spacing"
+              type="range" min="5" max="50" 
               class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
               @input="updateRodConfig"
               :disabled="displayModeConfig.mode !== 'linear'"
@@ -424,10 +454,11 @@ const emit = defineEmits([
 
 // 响应式数据
 const rodConfig = ref({
-  count: 10,
+  count: 20,
   startLength: 20,
   lengthStep: 10,
-  diameter: 5
+  diameter: 2,
+  spacing: 10
 })
 
 const materialConfig = ref({
@@ -453,6 +484,7 @@ const displayModeConfig = ref({
   arrayBaseHeight: 20,
   arrayAmplitude: 50,
   arrayScaleFactor: 1.0,
+  arraySpacing: 20,
   sculptureType: 'spiral',
   sculptureDensity: 'medium',
   sculptureScale: 1.0
@@ -569,6 +601,7 @@ function updateDisplayModeConfig() {
     configToSend.baseHeight = displayModeConfig.value.arrayBaseHeight;
     configToSend.amplitude = displayModeConfig.value.arrayAmplitude;
     configToSend.scaleFactor = displayModeConfig.value.arrayScaleFactor;
+    configToSend.spacing = displayModeConfig.value.arraySpacing;
   } else if (displayModeConfig.value.mode === 'sculpture') {
     configToSend.type = displayModeConfig.value.sculptureType;
     configToSend.density = displayModeConfig.value.sculptureDensity;
@@ -595,11 +628,23 @@ function updateExcitationTypeExternally(newType) {
   }
 }
 
+// 获取当前rod配置的方法
+function getCurrentRodConfig() {
+  return { ...rodConfig.value }
+}
+
+// 获取当前显示模式配置的方法  
+function getCurrentDisplayModeConfig() {
+  return { ...displayModeConfig.value }
+}
+
 defineExpose({
   updateRodStatus,
   setRunningState,
   updateCurrentAudioFrequency,
-  updateExcitationTypeExternally
+  updateExcitationTypeExternally,
+  getCurrentRodConfig,
+  getCurrentDisplayModeConfig
 })
 </script>
 

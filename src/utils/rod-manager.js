@@ -26,21 +26,30 @@ class RodManager {
         this.container = null;
         this.selectedRodIndex = 4; // 默认选择第5根杆件
         
-        // 振动参数
-        this.excitationFreq = 100;
-        this.excitationAmp = 0.1;
-        this.damping = 0.02;
-        this.timeScale = 1.0;
-        this.currentMaterial = 'steel';
-        this.excitationType = 'sine'; // 添加激励类型
-        
-        // 杆件配置 (这些现在作为基础/线性模式的默认值)
+        // 杆件配置
         this.baseRodConfig = {
             count: 10,
-            startLength: 20,  // mm
-            lengthStep: 10,   // mm
-            diameter: 2.0     // mm
+            startLength: 20, // mm
+            lengthStep: 10,  // mm
+            diameter: 2,     // mm
+            spacing: 15      // 杆件间距 (mm)
         };
+        
+        // 显示模式配置
+        this.displayModeConfig = {
+            mode: 'linear',
+            spacing: 20      // 阵列模式间距 (mm)
+        };
+        
+        // 激励参数
+        this.excitationType = 'sine';
+        this.excitationFreq = 100;
+        this.excitationAmp = 1;
+        this.damping = 0.01;
+        this.timeScale = 1.0;
+        
+        // 材料
+        this.currentMaterial = 'steel';
         
         // 新增：显示模式配置
         this.displayModeConfig = {
@@ -587,36 +596,33 @@ class RodManager {
     }
 
     /**
-     * 设置基础杆件参数 (通常用于线性模式或作为其他模式的默认直径等)
-     * @param {Object} params - 参数对象 { count, startLength, lengthStep, diameter }
+     * 设置基础杆件参数
+     * @param {Object} params - 杆件参数
      */
     setBaseRodParams(params) {
         if (params.count !== undefined) this.baseRodConfig.count = params.count;
         if (params.startLength !== undefined) this.baseRodConfig.startLength = params.startLength;
         if (params.lengthStep !== undefined) this.baseRodConfig.lengthStep = params.lengthStep;
         if (params.diameter !== undefined) this.baseRodConfig.diameter = params.diameter;
-        // 当基础参数改变时，如果当前是线性模式，则需要重新创建杆件
-        if (this.displayModeConfig.mode === 'linear') {
-            this.createAllRods();
-        }
+        if (params.spacing !== undefined) this.baseRodConfig.spacing = params.spacing;
+        
+        console.log('[RodManager] 基础杆件参数已更新:', this.baseRodConfig);
     }
 
     /**
-     * 设置显示模式和相关参数
+     * 设置显示模式
      * @param {Object} config - 显示模式配置
      */
     setDisplayMode(config) {
-        console.log('[RodManager.setDisplayMode]', config);
         this.displayModeConfig = { ...this.displayModeConfig, ...config };
-        // 模式或其参数更改后，需要重新创建所有杆件
-        // this.createAllRods(); // createAllRods 会在 App.vue 中被显式调用
+        console.log('[RodManager] 显示模式配置已更新:', this.displayModeConfig);
     }
 
     /**
      * 创建线性排列的杆件 (现有逻辑)
      */
     createLinearRods(material, rodRadius) {
-        const spacing = 0.015; // 杆件间距 (m)
+        const spacing = this.baseRodConfig.spacing / 1000; // 杆件间距 (m)
         const startX = -(this.baseRodConfig.count - 1) * spacing / 2;
 
         for (let i = 0; i < this.baseRodConfig.count; i++) {
@@ -662,7 +668,7 @@ class RodManager {
 
         console.log(`[RodManager.createArrayRods] Creating ${gridX}x${gridY} array with function: ${funcName}`);
 
-        const spacing = 0.02; // 杆件在X-Z平面上的间距 (m)
+        const spacing = this.displayModeConfig.spacing / 1000; // 杆件在X-Z平面上的间距 (m)
         const startX = -(gridX - 1) * spacing / 2;
         const startZ = -(gridY - 1) * spacing / 2;
         let rodGlobalIndex = 0;
