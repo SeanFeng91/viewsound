@@ -96,6 +96,7 @@ async function initializeVibrationEngine() {
     // 为AudioPlayer组件设置回调（在组件挂载后）
     if (audioPlayer.value) {
       audioPlayer.value.setFrequencyChangeCallback(handleAudioFrequencyChange)
+      // audioPlayer.value.setAudioProcessedCallback(handleAudioProcessed) // Replaced by event emitter
       // 设置window.audioPlayer引用供RodManager访问
       window.audioPlayer = audioPlayer.value
     }
@@ -117,8 +118,13 @@ function handleAudioFrequencyChange(frequency) {
   // 实时更新振动系统的激励频率
   if (rodManager && isSimulationRunning.value) {
     rodManager.setExcitationParams({
-      ...currentConfig.value,
-      frequency: frequency
+      // ...currentConfig.value, // Spread all of currentConfig might be too much here
+      // Let's be specific about what RodManager needs from currentConfig for excitation
+      type: currentConfig.value.type, // Ensure type is passed
+      frequency: frequency,
+      amplitude: currentConfig.value.amplitude,
+      damping: currentConfig.value.damping,
+      timeScale: currentConfig.value.timeScale
     })
   }
   
@@ -128,6 +134,26 @@ function handleAudioFrequencyChange(frequency) {
   }
   
   console.log(`🎵 实时频率: ${frequency.toFixed(1)}Hz`)
+}
+
+// Handler for when an audio file has been successfully processed by AudioPlayer
+function handleAudioProcessed() {
+  console.log('App.vue: Audio file processed, changing excitation type to audio.');
+  
+  // Update App.vue's currentConfig for excitation type
+  // The key for excitation type in currentConfig seems to be 'type' based on handleExcitationConfigUpdate
+  currentConfig.value.type = 'audio';
+
+  // Also, update the UI in VibrationControls so the dropdown changes
+  if (vibrationControls.value) {
+    vibrationControls.value.updateExcitationTypeExternally('audio');
+  }
+
+  // It is important that after App.vue's currentConfig.type is changed,
+  // this change is also propagated to RodManager via handleExcitationConfigUpdate.
+  // Calling updateExcitationTypeExternally on VibrationControls will trigger its own updateExcitationConfig,
+  // which emits 'update-excitation-config', which in turn calls App.vue's handleExcitationConfigUpdate.
+  // This ensures the full loop and updates RodManager.
 }
 
 // 事件处理方法
@@ -372,7 +398,7 @@ function generateResonanceData() {
   
   const material = MaterialProperties.get(currentConfig.value.material)
   const excitationFreq = currentConfig.value.frequency
-  const tolerance = 0.03 // ±3%容差
+  const tolerance = 0.01 // ±3%容差
   
   for (let i = 0; i < currentConfig.value.rodCount; i++) {
     const length = getRodLength(i) / 1000 // 转换为米
@@ -462,7 +488,8 @@ function convertToCSV(data) {
           <AudioPlayer 
             ref="audioPlayer" 
             class="bg-gray-800 p-3 rounded-md border border-gray-700"
-          />
+            @frequency-change="handleAudioFrequencyChange" 
+            @audio-processed-successfully="handleAudioProcessed" />
         </div>
 
         <!-- 右侧可视化区域 -->

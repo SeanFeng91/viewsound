@@ -29,27 +29,28 @@ class AudioProcessor {
      * @param {File} file - 音频文件
      * @returns {Promise} 处理结果
      */
-    async processAudioFile(file) {
-        try {
-            this.currentAudioFile = file;
-            const arrayBuffer = await file.arrayBuffer();
-            this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            return {
-                success: true,
-                duration: this.audioBuffer.duration,
-                sampleRate: this.audioBuffer.sampleRate,
-                channels: this.audioBuffer.numberOfChannels
-            };
-        } catch (error) {
-            console.error('音频文件处理失败:', error);
-            return { success: false, error: error.message };
-        }
-    }
+    // async processAudioFile(file) {
+    //     try {
+    //         this.currentAudioFile = file;
+    //         const arrayBuffer = await file.arrayBuffer();
+    //         this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+    //         return {
+    //             success: true,
+    //             duration: this.audioBuffer.duration,
+    //             sampleRate: this.audioBuffer.sampleRate,
+    //             channels: this.audioBuffer.numberOfChannels
+    //         };
+    //     } catch (error) {
+    //         console.error('音频文件处理失败:', error);
+    //         return { success: false, error: error.message };
+    //     }
+    // }
 
     /**
      * 分析音频频率内容
      * @returns {Array} 频率分析结果
      */
+    /*
     analyzeAudioFrequency() {
         if (!this.audioBuffer) return [];
 
@@ -71,12 +72,14 @@ class AudioProcessor {
         const avgSpectrum = this.calculateAverageSpectrum(frequencyBins);
         return this.convertToFrequencyData(avgSpectrum, sampleRate);
     }
+    */
 
     /**
      * 简化的FFT实现（用于演示，实际项目中建议使用专业库）
      * @param {Float32Array} data - 输入数据
      * @returns {Array} FFT结果
      */
+    /*
     performFFT(data) {
         const N = data.length;
         const spectrum = new Array(N / 2);
@@ -93,12 +96,14 @@ class AudioProcessor {
         
         return spectrum;
     }
+    */
 
     /**
      * 计算平均频谱
      * @param {Array} spectrums - 频谱数组
      * @returns {Array} 平均频谱
      */
+    /*
     calculateAverageSpectrum(spectrums) {
         if (spectrums.length === 0) return [];
         
@@ -113,6 +118,7 @@ class AudioProcessor {
         
         return average.map(val => val / spectrums.length);
     }
+    */
 
     /**
      * 转换为频率数据
@@ -120,6 +126,7 @@ class AudioProcessor {
      * @param {number} sampleRate - 采样率
      * @returns {Array} 频率数据
      */
+    /*
     convertToFrequencyData(spectrum, sampleRate) {
         const frequencyData = [];
         for (let i = 0; i < spectrum.length; i++) {
@@ -133,6 +140,7 @@ class AudioProcessor {
         }
         return frequencyData;
     }
+    */
 
     /**
      * 生成正弦波音频
@@ -141,6 +149,7 @@ class AudioProcessor {
      * @param {number} amplitude - 幅度 (0-1)
      * @returns {AudioBuffer} 生成的音频缓冲区
      */
+    /*
     generateSineWave(frequency, duration, amplitude = 0.5) {
         const sampleRate = this.audioContext.sampleRate;
         const numSamples = sampleRate * duration;
@@ -155,6 +164,7 @@ class AudioProcessor {
         
         return this.generatedAudioBuffer;
     }
+    */
 
     /**
      * 生成扫频信号
@@ -164,6 +174,7 @@ class AudioProcessor {
      * @param {number} amplitude - 幅度 (0-1)
      * @returns {AudioBuffer} 生成的音频缓冲区
      */
+    /*
     generateSweepSignal(startFreq, endFreq, duration, amplitude = 0.5) {
         const sampleRate = this.audioContext.sampleRate;
         const numSamples = sampleRate * duration;
@@ -179,12 +190,14 @@ class AudioProcessor {
         
         return this.generatedAudioBuffer;
     }
+    */
 
     /**
      * 播放音频缓冲区
      * @param {AudioBuffer} audioBuffer - 要播放的音频缓冲区
      * @param {Function} onEnded - 播放结束回调
      */
+    /*
     playAudioBuffer(audioBuffer, onEnded = null) {
         console.log('[AudioProcessor.playAudioBuffer] 开始播放指定的 audioBuffer。');
         if (!this.audioContext) {
@@ -233,11 +246,13 @@ class AudioProcessor {
             return false;
         }
     }
+    */
 
     /**
      * 播放当前音频文件
      * @param {Function} onEnded - 播放结束回调
      */
+    /*
     playCurrentAudio(onEnded = null) {
         console.log('[AudioProcessor.playCurrentAudio] 尝试播放当前音频。');
         if (this.audioBuffer) {
@@ -247,16 +262,19 @@ class AudioProcessor {
             console.warn('[AudioProcessor.playCurrentAudio] audioBuffer 为 null，无法播放。');
         }
     }
+    */
 
     /**
      * 播放生成的声音
      * @param {Function} onEnded - 播放结束回调
      */
+    /*
     playGeneratedSound(onEnded = null) {
         if (this.generatedAudioBuffer) {
             this.playAudioBuffer(this.generatedAudioBuffer, onEnded);
         }
     }
+    */
 
     /**
      * 生成单音调（generateSineWave的便捷方法）
@@ -265,20 +283,24 @@ class AudioProcessor {
      * @param {number} amplitude - 幅度 (0-1，默认0.5)
      * @returns {AudioBuffer} 生成的音频缓冲区
      */
+    /*
     generateTone(frequency, duration, amplitude = 0.5) {
         console.log(`[AudioProcessor.generateTone] 生成音调: ${frequency}Hz, ${duration}s, 幅度: ${amplitude}`);
-        return this.generateSineWave(frequency, duration, amplitude);
+        return this.generateSineWave(frequency, duration, amplitude); // Calls a now-commented-out method
     }
+    */
 
     /**
      * 停止音频播放
      */
+    /*
     stopAudio() {
         if (this.sourceNode && this.isPlaying) {
             this.sourceNode.stop();
             this.isPlaying = false;
         }
     }
+    */
 
     /**
      * 获取音频的时域数据（用于波形显示）
@@ -309,8 +331,9 @@ class AudioProcessor {
      * 从音频中提取主要频率成分
      * @returns {Array} 主要频率列表
      */
+    /*
     extractDominantFrequencies() {
-        const frequencyData = this.analyzeAudioFrequency();
+        const frequencyData = this.analyzeAudioFrequency(); // This would call a now-commented-out method
         if (frequencyData.length === 0) return [];
         
         // 找出幅度较大的频率成分
@@ -324,6 +347,7 @@ class AudioProcessor {
             amplitude: item.amplitude
         }));
     }
+    */
 }
 
 // 确保类导出到全局作用域

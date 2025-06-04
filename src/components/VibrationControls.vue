@@ -471,8 +471,8 @@ watch(() => materialConfig.value.type, (newType) => {
 })
 
 // 更新实时音频频率显示
-function updateCurrentAudioFrequency(frequency) {
-  currentAudioFrequency.value = frequency
+function updateCurrentAudioFrequency(freq) {
+  currentAudioFrequency.value = freq
 }
 
 // 暴露方法供父组件调用
@@ -513,10 +513,20 @@ watch(displayModeConfig, () => {
     updateDisplayModeConfig();
 }, { deep: true });
 
+// New method to allow parent to set the excitation type
+function updateExcitationTypeExternally(newType) {
+  if (excitationConfig.value.type !== newType) {
+    excitationConfig.value.type = newType;
+    // Trigger the existing update mechanism to ensure consistency and emit changes
+    updateExcitationConfig();
+  }
+}
+
 defineExpose({
   updateRodStatus,
   setRunningState,
-  updateCurrentAudioFrequency
+  updateCurrentAudioFrequency,
+  updateExcitationTypeExternally
 })
 </script>
 

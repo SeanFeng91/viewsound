@@ -8,7 +8,7 @@ const CONFIG = {
     physics: {
         gravity: 9.81,                  // 重力加速度 (m/s²)
         airDensity: 1.225,              // 空气密度 (kg/m³)
-        resonanceTolerance: 0.05,       // 共振判定容差 (5%)
+        resonanceTolerance: 0.01,       // 共振判定容差 (5%)
         maxDeformation: 0.01,           // 最大变形显示 (m)
         timeStep: 0.01                  // 时间步长 (s)
     },
@@ -36,11 +36,11 @@ const CONFIG = {
     excitation: {
         frequencyRange: {
             min: 20,                    // 最小频率 20Hz
-            max: 2000,                  // 最大频率 2000Hz
+            max: 4000,                  // 最大频率 2000Hz
             default: 100                // 默认频率 100Hz
         },
         amplitudeRange: {
-            min: 0.001,                 // 最小振幅 1mm
+            min: 0.0001,                 // 最小振幅 0.1mm
             max: 0.01,                  // 最大振幅 10mm
             default: 0.005              // 默认振幅 5mm
         },
@@ -63,7 +63,7 @@ const CONFIG = {
     // 3D渲染参数
     rendering: {
         camera: {
-            fov: 75,                    // 视场角
+            fov: 40,                    // 视场角
             near: 0.1,                  // 近裁剪面
             far: 1000,                  // 远裁剪面
             position: { x: 0, y: 0, z: 5 }  // 初始位置

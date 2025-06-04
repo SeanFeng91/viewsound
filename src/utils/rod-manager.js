@@ -88,7 +88,7 @@ class RodManager {
         this.scene.background = new THREE.Color(0xf0f0f0); 
 
         const aspect = this.container.clientWidth / this.container.clientHeight;
-        this.camera = new THREE.PerspectiveCamera(60, aspect, 0.01, 1000); // 调整FOV和near plane
+        this.camera = new THREE.PerspectiveCamera(40, aspect, 0.01, 1000); // 调整FOV和near plane
         this.camera.position.set(0, 0.1, 0.3); // 初始相机位置，会被updateCameraView覆盖
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true });

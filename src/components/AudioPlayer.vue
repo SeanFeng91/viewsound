@@ -133,6 +133,9 @@ const isAudioEnabled = ref(true)
 const isExcitationMode = ref(false)
 const currentAnalysis = ref(null) // 当前的频率分析结果
 
+// Emit definitions
+const emit = defineEmits(['frequency-change', 'audio-processed-successfully']);
+
 // 音频相关
 let audioContext = null
 let audioSource = null
@@ -245,6 +248,7 @@ async function processAudio() {
     drawWaveform()
     
     console.log('Audio processed successfully')
+    emit('audio-processed-successfully'); // Emit event when audio is processed
   } catch (error) {
     console.error('Error processing audio:', error)
     alert('音频处理失败: ' + error.message)
@@ -620,19 +624,31 @@ function getMusicalFrequencyAnalysis() {
   
   if (filteredPeaks.length === 0) return null
   
-  // 3. 尝试识别基频
-  const fundamentalFreq = findFundamentalFrequency(filteredPeaks)
+  // 4. 始终使用能量最强的过滤后峰值作为主导频率的候选
+  const dominantFreq = filteredPeaks[0].frequency;
+  let confidenceScore = filteredPeaks[0].amplitude; // 将最强峰值的幅度作为基础置信度
+
+  // 3. 尝试识别基频，主要用于调整置信度，而不是覆盖最强峰值
+  const fundamentalFreqAttempt = findFundamentalFrequency(filteredPeaks);
+  if (fundamentalFreqAttempt) {
+      // 如果基频识别与最强峰值接近，或提供了一个合理的基频解释，则可以提高置信度
+      if (Math.abs(dominantFreq - fundamentalFreqAttempt) < dominantFreq * 0.05) { // 如果基频与最强峰值非常接近
+        confidenceScore = Math.max(confidenceScore, 0.75); // 较高的置信度
+      } else {
+         // 如果找到的基频与最强峰值不同，说明声音可能较复杂，或者基频不明确
+         // 仍然可以认为找到一个潜在的基频是有价值的，所以略微提高置信度
+         confidenceScore = Math.max(confidenceScore, 0.6);
+      }
+      // 注意：我们不再用 fundamentalFreqAttempt 直接覆盖 dominantFreq
+  }
   
-  // 4. 如果找不到基频，使用能量最大的频率
-  const dominantFreq = fundamentalFreq || filteredPeaks[0].frequency
-  
-  // 5. 应用时间平滑
-  const smoothedFreq = applyFrequencySmoothing(dominantFreq)
+  // 5. 应用时间平滑。如果初始候选峰值多于一个，允许更剧烈的跳动。
+  const smoothedFreq = applyFrequencySmoothing(dominantFreq, filteredPeaks.length > 1);
   
   return {
     frequency: smoothedFreq,
-    confidence: fundamentalFreq ? 0.8 : 0.5,
-    peaks: filteredPeaks.slice(0, 3) // 返回前3个主要峰值
+    confidence: confidenceScore, // 置信度现在更多地反映了最强峰值的清晰度以及是否有基频支持
+    peaks: filteredPeaks.slice(0, 10) // 返回前10个主要峰值供参考或显示
   }
 }
 
@@ -703,7 +719,7 @@ function findFundamentalFrequency(peaks) {
 }
 
 // 频率平滑处理
-function applyFrequencySmoothing(newFreq) {
+function applyFrequencySmoothing(newFreq, allowJumps = false) {
   const maxHistoryLength = 5
   
   // 添加到历史记录
@@ -711,8 +727,15 @@ function applyFrequencySmoothing(newFreq) {
   if (frequencyHistory.length > maxHistoryLength) {
     frequencyHistory.shift()
   }
+
+  // If jumps are allowed (e.g., multiple significant peaks detected),
+  // return the new frequency more directly to allow for more drastic changes.
+  if (allowJumps) {
+    lastDominantFreq = newFreq;
+    return newFreq; // Return new frequency with minimal or no smoothing
+  }
   
-  // 如果频率变化太剧烈，进行平滑
+  // 如果频率变化太剧烈，进行平滑 (original smoothing logic)
   if (lastDominantFreq > 0) {
     const freqChange = Math.abs(newFreq - lastDominantFreq) / lastDominantFreq
     
@@ -728,7 +751,12 @@ function applyFrequencySmoothing(newFreq) {
         totalWeight += weights[i]
       }
       
-      newFreq = weightedSum / totalWeight
+      if (totalWeight > 0) {
+        newFreq = weightedSum / totalWeight;
+      } else if (frequencyHistory.length > 0) {
+        newFreq = frequencyHistory[frequencyHistory.length -1]; // Fallback to the most recent
+      }
+      // else newFreq remains unchanged if history is empty and totalWeight is 0
     }
   }
   
