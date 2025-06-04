@@ -13,7 +13,7 @@
         >
           <option value="linear">线性排列</option>
           <option value="array">函数阵列</option>
-          <option value="sculpture">空间雕塑 (待实现)</option>
+          <option value="sculpture">空间雕塑</option>
         </select>
 
         <!-- 线性模式提示 -->
@@ -131,8 +131,100 @@
 
         </div>
         
-        <div v-if="displayModeConfig.mode === 'sculpture'" class="p-2 bg-gray-600 text-xs text-gray-300">
-          <p>空间雕塑模式参数区域，待后续实现。</p>
+        <!-- 空间雕塑模式参数 -->
+        <div v-if="displayModeConfig.mode === 'sculpture'" class="space-y-2 p-2 bg-gray-600">
+          
+          <div class="grid grid-cols-2 gap-2">
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-medium text-white">雕塑类型</label>
+              <select 
+                v-model="displayModeConfig.sculptureType"
+                class="px-2 py-1 bg-gray-500 border border-gray-400 text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                @change="updateDisplayModeConfig"
+              >
+                <option value="radial">放射状</option>
+                <option value="wing">翼状</option>
+                <option value="spiral">螺旋状</option>
+                <option value="butterfly">蝴蝶状</option>
+                <option value="ring">环形</option>
+              </select>
+            </div>
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-medium text-white">总杆件数</label>
+              <span class="text-xs text-green-400 font-semibold">{{ displayModeConfig.sculptureRodCount }}</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-white">基础长度</label>
+                <span class="text-xs text-blue-400">{{ displayModeConfig.sculptureBaseLength }}mm</span>
+              </div>
+              <input 
+                v-model.number="displayModeConfig.sculptureBaseLength"
+                type="range" min="10" max="50" 
+                class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
+                @input="updateDisplayModeConfig"
+              />
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-white">长度变化</label>
+                <span class="text-xs text-blue-400">{{ displayModeConfig.sculptureLengthVariation }}mm</span>
+              </div>
+              <input 
+                v-model.number="displayModeConfig.sculptureLengthVariation"
+                type="range" min="10" max="100" 
+                class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
+                @input="updateDisplayModeConfig"
+              />
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-white">雕塑尺寸</label>
+                <span class="text-xs text-blue-400">{{ displayModeConfig.sculptureScale.toFixed(1) }}</span>
+              </div>
+              <input 
+                v-model.number="displayModeConfig.sculptureScale"
+                type="range" min="0.5" max="3.0" step="0.1"
+                class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
+                @input="updateDisplayModeConfig"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-white">杆件数量</label>
+                <span class="text-xs text-blue-400">{{ displayModeConfig.sculptureRodCount }}</span>
+              </div>
+              <input 
+                v-model.number="displayModeConfig.sculptureRodCount"
+                type="range" min="20" max="200" 
+                class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
+                @input="updateDisplayModeConfig"
+              />
+            </div>
+            <div class="space-y-1" v-if="displayModeConfig.sculptureType === 'spiral'">
+              <div class="flex justify-between items-center">
+                <label class="text-xs font-medium text-white">螺旋圈数</label>
+                <span class="text-xs text-blue-400">{{ displayModeConfig.spiralTurns }}</span>
+              </div>
+              <input 
+                v-model.number="displayModeConfig.spiralTurns"
+                type="range" min="1" max="5" step="0.5"
+                class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
+                @input="updateDisplayModeConfig"
+              />
+            </div>
+          </div>
+          
+          <p class="text-xs text-gray-300">
+            配置3D空间中的艺术雕塑形状。每个杆件都有独立的位置和方向。
+          </p>
+
         </div>
       </div>
     </div>
@@ -487,7 +579,11 @@ const displayModeConfig = ref({
   arraySpacing: 20,
   sculptureType: 'spiral',
   sculptureDensity: 'medium',
-  sculptureScale: 1.0
+  sculptureScale: 1.0,
+  sculptureRodCount: 50,
+  sculptureBaseLength: 20,
+  sculptureLengthVariation: 0.3,
+  spiralTurns: 3
 })
 
 const isRunning = ref(false)
@@ -606,6 +702,10 @@ function updateDisplayModeConfig() {
     configToSend.type = displayModeConfig.value.sculptureType;
     configToSend.density = displayModeConfig.value.sculptureDensity;
     configToSend.scale = displayModeConfig.value.sculptureScale;
+    configToSend.rodCount = displayModeConfig.value.sculptureRodCount;
+    configToSend.baseLength = displayModeConfig.value.sculptureBaseLength;
+    configToSend.lengthVariation = displayModeConfig.value.sculptureLengthVariation;
+    configToSend.spiralTurns = displayModeConfig.value.spiralTurns;
   }
   emit('update-display-mode', configToSend)
 }

@@ -902,4 +902,90 @@ this.updateVisualization({
 
 *记录时间：2024年12月19日*  
 *开发者：AI Assistant*  
+*项目：多杆件振动模拟系统*
+
+---
+
+## 📅 2024年12月18日 - 空间雕塑模式调试与修复
+
+### 🚀 功能背景
+
+用户提出希望实现一种"空间雕塑"模式，能够将杆件按照预设的复杂三维形态进行排列，而不是简单的线性或平面阵列。目标是创建如放射状、翼状、螺旋状等具有艺术感的杆件组合。
+
+### 🐛 问题描述与排查过程
+
+在初步实现空间雕塑模式后，遇到了以下问题：
+
+1.  **仅显示底座，杆件消失**：切换到雕塑模式后，场景中只显示了杆件的底座，杆件本身没有被渲染出来。
+    *   **排查1**：最初怀疑 `sculpture-manager.js` 文件中的雕塑生成逻辑有误。通过检查发现，该文件内容意外为空，导致 `SculptureManager` 类未定义，无法生成杆件数据。
+    *   **排查2**：在恢复 `sculpture-manager.js` 后，问题依旧。进一步排查 `rod-manager.js` 中调用 `SculptureManager` 的部分。
+
+2.  **`rod-manager.js` 调用参数错误**：
+    *   **发现**：在 `rod-manager.js` 的 `createSculptureRods` 方法中，从 `displayModeConfig` 获取雕塑参数时，使用的键名不正确（例如，应该是 `sculptureType` 而不是 `type`）。
+    *   **影响**：这导致传递给 `SculptureManager` 的配置都是默认值或 `undefined`，无法正确生成预期的雕塑形态。
+    *   **单位错误**：`baseLength` 和 `lengthVariation` 参数在传递给 `SculptureManager` 之前被错误地从毫米 (mm) 转换成了米 (m)，而 `SculptureManager` 内部期望接收的是毫米单位的长度，在其内部再进行到米的转换。这导致杆件长度计算错误。
+
+3.  **`displayModeConfig` 初始化不完整**：
+    *   **发现**：`rod-manager.js` 中 `displayModeConfig` 的初始化缺少了部分雕塑模式特定的参数，例如 `sculptureRodCount`, `sculptureBaseLength`, `sculptureLengthVariation`, `sculptureScale`。
+    *   **影响**：即使参数键名在 `createSculptureRods` 中被修正，如果这些参数在 `displayModeConfig` 中未定义，依然会导致雕塑生成不符合预期。
+
+### 🛠️ 修复方案与具体修改
+
+针对以上问题，进行了如下修复：
+
+1.  **恢复 `sculpture-manager.js`**：
+    *   **操作**：重新编写并恢复了 `sculpture-manager.js` 文件的完整内容。
+    *   **内容**：`SculptureManager` 类现在包含以下预设雕塑类型的生成逻辑：
+        *   `generateRadialRods()`: 放射状（球形分布）
+        *   `generateWingRods()`: 翼状（V字形鸟翼效果）
+        *   `generateSpiralRods()`: 螺旋状（螺旋上升）
+        *   `generateButterflyRods()`: 蝴蝶状（对称花瓣形）
+        *   `generateRingRods()`: 环形（圆环波浪排列）
+    *   **文件**：`src/utils/sculpture-manager.js`
+
+2.  **修正 `rod-manager.js` 中的 `createSculptureRods` 方法**：
+    *   **操作**：修改了从 `displayModeConfig` 获取雕塑参数时的键名，确保与 `displayModeConfig` 中的定义一致。
+    *   **具体修改** (部分示例):
+        ```javascript
+        // ...
+        const sculptureConfig = {
+            type: this.displayModeConfig.sculptureType || 'radial', // 修正了键名
+            rodCount: this.displayModeConfig.sculptureRodCount || 50, // 修正了键名
+            baseLength: this.displayModeConfig.sculptureBaseLength || 20, // 保持mm单位，移除过早转换
+            lengthVariation: this.displayModeConfig.sculptureLengthVariation || 30, // 保持mm单位
+            radius: (this.displayModeConfig.sculptureScale || 1.0) * 0.15,
+            // ...
+        };
+        // ...
+        ```
+    *   **文件**：`src/utils/rod-manager.js`
+
+3.  **完善 `rod-manager.js` 中 `displayModeConfig` 的初始化**：
+    *   **操作**：在 `displayModeConfig` 的初始化块中，为雕塑模式添加了所有必要的参数及其默认值。
+    *   **具体修改**：
+        ```javascript
+        // ...
+        this.displayModeConfig = {
+            // ... 其他模式参数 ...
+            // 雕塑参数
+            sculptureType: 'radial',           // 雕塑类型
+            sculptureRodCount: 50,             // 雕塑杆件数量
+            sculptureBaseLength: 20,           // 雕塑基础长度 (mm)
+            sculptureLengthVariation: 30,      // 雕塑长度变化 (mm)
+            sculptureScale: 1.0,               // 雕塑缩放因子
+            spiralTurns: 2,                    // 螺旋圈数 (针对spiral类型)
+            // ...
+        };
+        // ...
+        ```
+    *   **文件**：`src/utils/rod-manager.js`
+
+### ✅ 修复结果
+
+经过上述修改，空间雕塑模式已能正常工作。用户现在可以在UI中选择"雕塑"模式，并进一步选择具体的雕塑类型（如放射状、翼状等），调整相关参数（如杆件数量、基础长度等），场景中的杆件会按照选定的三维形态正确显示。
+
+---
+
+*记录时间：2024年12月18日*  
+*开发者：AI Assistant*  
 *项目：多杆件振动模拟系统* 

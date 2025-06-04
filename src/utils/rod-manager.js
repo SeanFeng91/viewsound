@@ -6,6 +6,7 @@
 import { MaterialProperties } from './materials.js';
 import { VibrationCalculator } from './vibration-calc.js';
 import { getArrayHeightFunction } from './math-functions.js'; // 导入高度函数获取器
+import { SculptureManager } from './sculpture-manager.js'; // 导入雕塑管理器
 
 // 创建模块实例
 const materialProperties = new MaterialProperties();
@@ -61,8 +62,14 @@ class RodManager {
             baseHeight: 20,
             amplitude: 50,
             scaleFactor: 1.0,
-            // 雕塑参数 (待定)
-            sculptureType: 'spiral' 
+            // 雕塑参数
+            sculptureType: 'radial',           // 雕塑类型：radial, wing, spiral, butterfly, ring
+            sculptureRodCount: 50,             // 雕塑杆件数量
+            sculptureBaseLength: 20,           // 雕塑基础长度 (mm)
+            sculptureLengthVariation: 30,      // 雕塑长度变化 (mm)
+            sculptureScale: 1.0,               // 雕塑缩放因子
+            spiralTurns: 2,                    // 螺旋圈数
+            spacing: 20                        // 阵列模式间距 (mm)
         };
     }
 
@@ -236,7 +243,7 @@ class RodManager {
                 this.createArrayRods(material, rodRadius);
                 break;
             case 'sculpture':
-                this.createSculptureRods(material, rodRadius); // 占位
+                this.createSculptureRods(material, rodRadius);
                 break;
             default:
                 console.warn(`未知显示模式: ${this.displayModeConfig.mode}`);
@@ -720,13 +727,70 @@ class RodManager {
     }
 
     /**
-     * 创建空间雕塑模式的杆件 (占位)
+     * 创建空间雕塑模式的杆件
      */
     createSculptureRods(material, rodRadius) {
-        console.warn("[RodManager.createSculptureRods] 雕塑模式创建逻辑待实现。");
-        // 临时创建一个线性排列作为占位符
-        this.createLinearRods(material, rodRadius);
-        alert("空间雕塑模式正在开发中，将临时显示线性排列。");
+        console.log('[RodManager.createSculptureRods] 开始创建空间雕塑杆件');
+        
+        // 创建雕塑管理器实例
+        const sculptureManager = new SculptureManager();
+        
+        // 设置雕塑配置 - 使用displayModeConfig的参数
+        const sculptureConfig = {
+            type: this.displayModeConfig.sculptureType || 'radial',
+            rodCount: this.displayModeConfig.sculptureRodCount || 50,
+            baseLength: this.displayModeConfig.sculptureBaseLength || 20, // 保持mm单位
+            lengthVariation: this.displayModeConfig.sculptureLengthVariation || 30, // 保持mm单位
+            radius: (this.displayModeConfig.sculptureScale || 1.0) * 0.15, // 雕塑半径 (m)
+            height: (this.displayModeConfig.sculptureScale || 1.0) * 0.1,  // 高度变化 (m)
+            spiralTurns: this.displayModeConfig.spiralTurns || 2
+        };
+        
+        console.log('[RodManager.createSculptureRods] 雕塑配置:', sculptureConfig);
+        
+        // 生成雕塑杆件数据
+        const sculptureRods = sculptureManager.generateSculptureRods(sculptureConfig);
+        console.log(`[RodManager.createSculptureRods] 生成了 ${sculptureRods.length} 个雕塑杆件`);
+        
+        // 创建3D杆件对象
+        sculptureRods.forEach((rodData, index) => {
+            const { position, direction, length } = rodData;
+            
+            // 创建杆件几何体
+            const rod = this.createSingleRod(length, rodRadius, material.color);
+            
+            // 设置杆件位置
+            rod.position.set(position.x, position.y, position.z);
+            
+            // 计算杆件旋转，使其沿着指定方向
+            const rodDirection = new THREE.Vector3(direction.x, direction.y, direction.z);
+            const defaultUp = new THREE.Vector3(0, 1, 0); // 杆件默认朝上
+            
+            // 计算旋转四元数
+            const quaternion = new THREE.Quaternion();
+            quaternion.setFromUnitVectors(defaultUp, rodDirection);
+            rod.setRotationFromQuaternion(quaternion);
+            
+            // 设置杆件数据
+            rod.userData = {
+                index: index,
+                length: length,
+                radius: rodRadius,
+                material: material,
+                sculptureData: rodData, // 保存原始雕塑数据
+                naturalFrequencies: materialProperties.calculateAllModalFrequencies(
+                    length * 1000, // m to mm
+                    this.baseRodConfig.diameter, 
+                    material
+                )
+            };
+            
+            this.scene.add(rod);
+            this.rods.push(rod);
+            this.originalPositions.push(this.storeOriginalPositions(rod));
+        });
+        
+        console.log(`[RodManager.createSculptureRods] 雕塑杆件创建完成，类型: ${sculptureConfig.type}`);
     }
 
     /**
