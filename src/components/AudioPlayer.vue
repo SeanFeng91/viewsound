@@ -91,14 +91,14 @@
         </button>
       </div>
       <div class="text-2xs text-gray-300 space-y-1">
-        <div v-if="currentAnalysis" class="flex justify-between">
-          <div><span class="text-blue-400">主导频率:</span> {{ currentAnalysis.dominantFrequency.toFixed(1) }}Hz</div>
-          <div><span class="text-yellow-400">置信度:</span> {{ (currentAnalysis.confidence * 100).toFixed(0) }}%</div>
+        <div v-if="currentAnalysis && typeof currentAnalysis.frequency === 'number'" class="flex justify-between">
+          <div><span class="text-blue-400">主导频率:</span> {{ currentAnalysis.frequency.toFixed(1) }}Hz</div>
+          <div v-if="typeof currentAnalysis.confidence === 'number'"><span class="text-yellow-400">置信度:</span> {{ (currentAnalysis.confidence * 100).toFixed(0) }}%</div>
         </div>
-        <div v-if="currentAnalysis && currentAnalysis.peaks.length > 1">
+        <div v-if="currentAnalysis && currentAnalysis.peaks && currentAnalysis.peaks.length > 1">
           <span class="text-green-400">主要峰值:</span>
           <span v-for="(peak, index) in currentAnalysis.peaks.slice(0, 3)" :key="index" class="ml-1">
-            {{ peak.frequency.toFixed(0) }}Hz
+            <span v-if="peak && typeof peak.frequency === 'number'">{{ peak.frequency.toFixed(0) }}Hz</span>
           </span>
         </div>
       </div>
@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 // 响应式数据
 const audioFileInput = ref(null)
@@ -194,16 +194,16 @@ async function initAudioContext() {
 }
 
 function initCanvas() {
-  if (waveformCanvas.value) {
+  if (waveformCanvas.value && waveformContainer.value) {
     waveformCtx = waveformCanvas.value.getContext('2d')
-    waveformCanvas.value.width = waveformContainer.value.clientWidth
-    waveformCanvas.value.height = waveformContainer.value.clientHeight
+    waveformCanvas.value.width = waveformContainer.value.clientWidth > 0 ? waveformContainer.value.clientWidth : 300;
+    waveformCanvas.value.height = waveformContainer.value.clientHeight > 0 ? waveformContainer.value.clientHeight : 100;
   }
   
-  if (spectrumCanvas.value) {
+  if (spectrumCanvas.value && spectrumContainer.value) {
     spectrumCtx = spectrumCanvas.value.getContext('2d')
-    spectrumCanvas.value.width = spectrumContainer.value.clientWidth
-    spectrumCanvas.value.height = spectrumContainer.value.clientHeight
+    spectrumCanvas.value.width = spectrumContainer.value.clientWidth > 0 ? spectrumContainer.value.clientWidth : 300;
+    spectrumCanvas.value.height = spectrumContainer.value.clientHeight > 0 ? spectrumContainer.value.clientHeight : 80;
   }
 }
 
@@ -775,12 +775,14 @@ function getDominantFrequency() {
 }
 
 // 监听窗口大小变化
-watch([waveformContainer, spectrumContainer], () => {
-  initCanvas()
+watch([waveformContainer, spectrumContainer], async () => {
+  await nextTick();
+  initCanvas();
   if (audioBuffer.value) {
-    drawWaveform()
+    await nextTick();
+    drawWaveform(); 
   }
-})
+}, { flush: 'post' });
 
 // 获取详细的音频分析信息（用于调试）
 function getDetailedAudioAnalysis() {

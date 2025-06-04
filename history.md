@@ -306,8 +306,12 @@
 
 3. **AudioPlayer.vue第463-488行** 新增频率平滑算法：
    ```javascript
-   function applyFrequencySmoothing(newFreq) {
-     if (freqChange > 0.3) { // 变化超过30%时平滑
+   function applyFrequencySmoothing(newFreq, allowJumps = false) {
+     if (allowJumps) {
+       lastDominantFreq = newFreq;
+       return newFreq; // Return new frequency with minimal or no smoothing
+     }
+     if (freqChange > 0.3) { // 如果变化超过30%
        const weights = [0.4, 0.3, 0.2, 0.1]  // 加权平均
        // 避免频率剧烈跳跃
      }
@@ -405,7 +409,7 @@ function getMusicalFrequencyAnalysis() {
   const fundamentalFreq = findFundamentalFrequency(filteredPeaks)
   
   // 4. 频率平滑 (时间连续性)
-  const smoothedFreq = applyFrequencySmoothing(dominantFreq)
+  const smoothedFreq = applyFrequencySmoothing(filteredPeaks[0].frequency, filteredPeaks.length > 1)
   
   return {
     frequency: smoothedFreq,
@@ -656,5 +660,161 @@ this.updateVisualization({
 ---
 
 *记录时间：2024年12月18日*  
+*开发者：AI Assistant*  
+*项目：多杆件振动模拟系统*
+
+---
+
+## 📅 2024年12月19日 - 音频激励频率提取与UI自动化优化
+
+### 🎯 核心目标
+
+用户反馈在音频文件激励模式下，频率提取仍有优化空间，希望能更准确地捕捉音乐中的主要音高变化，并提升相关操作的自动化程度。
+
+### 🛠️ 详细修改与思考过程
+
+#### 1. 优化频率平滑逻辑，允许更剧烈的频率跳动 (`AudioPlayer.vue`)
+
+*   **用户反馈与思考**：
+    *   用户观察到，即使音频中存在多个显著的频率峰值，原有的平滑逻辑有时会使得输出的激励频率过于平缓，导致3D振动效果相对单一，未能充分反映音乐的动态变化。
+    *   目标是调整平滑算法，使其在检测到音乐本身具有丰富频率变化时，允许输出的激励频率也相应地产生更快速和剧烈的跳动。
+
+*   **修改实现**：
+    1.  在 `getMusicalFrequencyAnalysis` 函数中，向 `applyFrequencySmoothing` 函数传递第二个参数 `allowJumps`。当 `filteredPeaks.length > 1` (即检测到多个潜在的频率峰值) 时，`allowJumps` 设置为 `true`。
+        ```javascript
+        // AudioPlayer.vue - getMusicalFrequencyAnalysis
+        const smoothedFreq = applyFrequencySmoothing(filteredPeaks[0].frequency, filteredPeaks.length > 1);
+        ```
+    2.  修改 `applyFrequencySmoothing` 函数逻辑：
+        *   增加 `allowJumps` 参数 (默认为 `false`)。
+        *   当 `allowJumps` 为 `true` 时，函数会更直接地返回新的频率值 `newFreq`，从而减少平滑效果，允许更快的频率变化。
+        ```javascript
+        // AudioPlayer.vue - applyFrequencySmoothing
+        function applyFrequencySmoothing(newFreq, allowJumps = false) {
+          if (freqChange > 0.3) { // 如果变化超过30%
+            const weights = [0.4, 0.3, 0.2, 0.1]  // 加权平均
+            // 避免频率剧烈跳跃
+          }
+          if (allowJumps) {
+            lastDominantFreq = newFreq;
+            return newFreq; // Return new frequency with minimal or no smoothing
+          }
+        }
+        ```
+    3.  **用户后续微调**：用户自行将 `applyFrequencySmoothing` 中平滑触发的阈值从 `freqChange > 0.9` 修改回 `freqChange > 0.3`。这意味着即使在非 `allowJumps` 的情况下，平滑处理也更容易被触发，这与允许剧烈跳动的初衷形成对比，但记录用户操作。
+        ```diff
+        // AudioPlayer.vue - applyFrequencySmoothing (user change)
+        -     if (freqChange > 0.9) { // 如果变化超过30%
+        +     if (freqChange > 0.3) { // 如果变化超过30%
+        ```
+
+*   **预期效果**：当音乐中存在多个清晰的、交替出现的频率成分时，系统能够更灵敏地在这些频率间切换，使得3D振动效果更具动态性。
+
+#### 2. 音频文件处理完成后自动切换激励类型 (`AudioPlayer.vue`, `VibrationControls.vue`, `App.vue`)
+
+*   **用户需求与思考**：
+    *   为了提升用户操作的便捷性，当用户在 `AudioPlayer` 组件中成功上传并解析完一个音频文件后，主控制面板 (`VibrationControls`) 中的"激励类型"下拉菜单应自动切换到"音频文件"选项。
+
+*   **修改实现**：
+    1.  **`AudioPlayer.vue`**:
+        *   在 `processAudio` 方法成功处理音频文件后，通过 `emit('audio-processed-successfully')` 发出一个自定义事件。
+        ```javascript
+        // AudioPlayer.vue - processAudio
+        emit('audio-processed-successfully');
+        ```
+    2.  **`VibrationControls.vue`**:
+        *   新增一个 `updateExcitationTypeExternally(newType)` 方法。此方法允许父组件（`App.vue`）程序化地设置激励类型的值。
+        *   当该方法被调用时，它会更新组件内部的 `excitationConfig.value.type`，并调用 `updateExcitationConfig()` 来确保更改被正确应用并向上冒泡（emit）给 `App.vue`。
+        *   将此新方法通过 `defineExpose` 暴露出去。
+        ```javascript
+        // VibrationControls.vue - new method
+        function updateExcitationTypeExternally(newType) {
+          if (excitationConfig.value.type !== newType) {
+            excitationConfig.value.type = newType;
+            updateExcitationConfig();
+          }
+        }
+        defineExpose({ /*...,*/ updateExcitationTypeExternally });
+        ```
+    3.  **`App.vue`**:
+        *   在模板中，为 `<AudioPlayer>` 组件添加对 `audio-processed-successfully` 事件的监听，并绑定到新的处理函数 `handleAudioProcessed`。
+        ```html
+        <!-- App.vue - template -->
+        <AudioPlayer 
+          ref="audioPlayer" 
+          class="bg-gray-800 p-3 rounded-md border border-gray-700"
+          @frequency-change="handleAudioFrequencyChange" 
+          @audio-processed-successfully="handleAudioProcessed" />
+        ```
+        *   实现 `handleAudioProcessed` 函数：
+            *   当事件触发时，首先更新 `App.vue` 自身的 `currentConfig.value.type` 为 `'audio'`。
+            *   然后，调用 `vibrationControls.value.updateExcitationTypeExternally('audio')` 来同步更新 `VibrationControls` 组件的UI显示。
+            *   这一系列调用确保了状态的一致性，并最终通过 `VibrationControls` 发出的 `update-excitation-config` 事件，使 `App.vue` 中的 `handleExcitationConfigUpdate` 被调用，从而将激励类型更改通知到 `RodManager`。
+        ```javascript
+        // App.vue - script
+        function handleAudioProcessed() {
+          console.log('App.vue: Audio file processed, changing excitation type to audio.');
+          currentConfig.value.type = 'audio';
+          if (vibrationControls.value) {
+            vibrationControls.value.updateExcitationTypeExternally('audio');
+          }
+        }
+        ```
+
+*   **预期效果**：用户上传音频文件后，无需手动更改激励类型，系统会自动完成切换，简化操作流程。
+
+#### 3. 优先选择能量最强的频率峰值 (`AudioPlayer.vue`)
+
+*   **用户反馈与思考**：
+    *   用户进一步观察到，即使在允许更剧烈跳动后，系统在处理某些音乐（如包含清晰钢琴音符的片段）时，有时仍会倾向于提取一个全局的"基频"，而不是音乐中当下最突出、能量最强的那个音高（频率峰值）。
+    *   目标是调整频率提取算法，使其优先选择当前频谱中能量最高的那个峰值作为主导激励频率。
+
+*   **修改实现** (`AudioPlayer.vue` - `getMusicalFrequencyAnalysis` 函数):
+    1.  **主导频率选择**：将 `dominantFreq` 的初始和主要选择逻辑修改为直接取自 `filteredPeaks[0].frequency` (即经过初步过滤后，能量最强的那个峰值)。
+    2.  **基频识别的辅助作用**：`findFundamentalFrequency` 函数的调用结果 (`fundamentalFreqAttempt`) 主要用于调整和确认 `confidenceScore`（置信度）。
+        *   如果识别出的基频与能量最强的峰值非常接近，则大幅提高置信度。
+        *   如果识别出的基频与最强峰值不同，也认为这提供了有用的声学信息，适当提高置信度。
+        *   关键在于，识别出的基频不再直接覆盖能量最强的峰值作为输出频率。
+    3.  **平滑处理**：继续沿用之前的改进，当 `filteredPeaks.length > 1` 时，传递 `allowJumps = true` 给 `applyFrequencySmoothing` 函数，允许更快的频率变化。
+
+    ```javascript
+    // AudioPlayer.vue - getMusicalFrequencyAnalysis (relevant parts)
+    function getMusicalFrequencyAnalysis() {
+      // ... (peak finding and filtering) ...
+      if (filteredPeaks.length === 0) return null;
+
+      const dominantFreq = filteredPeaks[0].frequency; // Always start with the strongest peak
+      let confidenceScore = filteredPeaks[0].amplitude; 
+
+      const fundamentalFreqAttempt = findFundamentalFrequency(filteredPeaks);
+      if (fundamentalFreqAttempt) {
+        if (Math.abs(dominantFreq - fundamentalFreqAttempt) < dominantFreq * 0.05) {
+          confidenceScore = Math.max(confidenceScore, 0.75);
+        } else {
+          confidenceScore = Math.max(confidenceScore, 0.6);
+        }
+      }
+      
+      const smoothedFreq = applyFrequencySmoothing(dominantFreq, filteredPeaks.length > 1);
+      
+      return {
+        frequency: smoothedFreq,
+        confidence: confidenceScore,
+        peaks: filteredPeaks.slice(0, 10)
+      };
+    }
+    ```
+
+*   **预期效果**：系统能够更准确地捕捉并使用音乐中实际最响亮的音高作为激励频率，特别适合处理包含清晰、独立音符的音乐片段，使得3D振动响应更贴合音乐的旋律和主要发声部分。
+
+### ✅ 今日成果总结
+
+- 优化了音频激励的频率提取逻辑，使其能更灵敏地响应音乐中的能量峰值和多样的频率变化，从而提供更动态和准确的3D振动效果。
+- 实现了在用户成功上传并处理音频文件后，激励类型自动切换为"音频文件"的功能，提升了用户体验。
+- 这些修改主要集中在 `AudioPlayer.vue`，并通过事件和方法调用与 `App.vue` 及 `VibrationControls.vue` 协同工作。
+
+---
+
+*记录时间：2024年12月19日*  
 *开发者：AI Assistant*  
 *项目：多杆件振动模拟系统* 
