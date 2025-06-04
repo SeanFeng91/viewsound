@@ -73,6 +73,7 @@ class RodManager {
         this.clock = new THREE.Clock(); // 在这里创建clock
         this.setupScene();
         this.setupLighting();
+        this.createEnvironment(); // 添加环境创建
         this.createAllRods();
         this.setupControls();
         this.startAnimation();
@@ -85,11 +86,11 @@ class RodManager {
      */
     setupScene() {
         this.scene = new THREE.Scene();
-        // 将背景颜色改为明亮的白色
-        this.scene.background = new THREE.Color(0xf0f0f0); 
+        // 设置天空色背景
+        this.scene.background = new THREE.Color(0xe6f3ff); 
 
         const aspect = this.container.clientWidth / this.container.clientHeight;
-        this.camera = new THREE.PerspectiveCamera(40, aspect, 0.01, 1000); // 调整FOV和near plane
+        this.camera = new THREE.PerspectiveCamera(25, aspect, 0.01, 1000); // 稍微增大FOV
         this.camera.position.set(0, 0.1, 0.3); // 初始相机位置，会被updateCameraView覆盖
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -109,29 +110,103 @@ class RodManager {
      */
     setupLighting() {
         // 环境光，提供基础亮度
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 增强环境光
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // 降低环境光强度
         this.scene.add(ambientLight);
 
         // 平行光，模拟太阳光，产生阴影
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // 增强平行光
-        directionalLight.position.set(5, 10, 7.5);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // 降低平行光强度
+        directionalLight.position.set(8, 12, 6);
         directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048; // 提高阴影质量
+        directionalLight.shadow.mapSize.width = 2048;
         directionalLight.shadow.mapSize.height = 2048;
         directionalLight.shadow.camera.near = 0.5;
         directionalLight.shadow.camera.far = 50;
-        directionalLight.shadow.bias = -0.001; // 减少阴影痤疮
+        directionalLight.shadow.camera.left = -2;
+        directionalLight.shadow.camera.right = 2;
+        directionalLight.shadow.camera.top = 2;
+        directionalLight.shadow.camera.bottom = -2;
+        directionalLight.shadow.bias = -0.0005;
         this.scene.add(directionalLight);
         
-        // 添加一个半球光，模拟天空和地面的反射光，使场景更柔和自然
-        const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
+        // 半球光，模拟天空和地面的反射光
+        const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x362d1d, 0.3); // 天空蓝和地面褐色
         hemisphereLight.position.set(0, 20, 0);
         this.scene.add(hemisphereLight);
 
-        // 可以考虑添加一些点光源或聚光灯来突出特定区域，但初期保持简单
-        // const pointLight = new THREE.PointLight(0xffffff, 0.5);
-        // pointLight.position.set(0, 5, 5);
-        // this.scene.add(pointLight);
+        // 添加一个辅助点光源，增强杆件区域的照明
+        const pointLight = new THREE.PointLight(0xffffff, 0.3, 10);
+        pointLight.position.set(0, 2, 2);
+        this.scene.add(pointLight);
+    }
+
+    /**
+     * 创建环境（地面和墙面）
+     */
+    createEnvironment() {
+        // 创建地面
+        const groundSize = 1; // 地面大小 (米)
+        const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
+        const groundMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x666666, // 浅灰色地面
+            transparent: true,
+            opacity: 0.8
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2; // 旋转到水平面
+        ground.position.y = -0.001; // 稍微低于Y=0，避免Z-fighting
+        ground.receiveShadow = true;
+        this.scene.add(ground);
+
+        // 创建网格线地面
+        const gridHelper = new THREE.GridHelper(groundSize, 20, 0x999999, 0xcccccc);
+        gridHelper.position.y = 0;
+        gridHelper.material.opacity = 0.3;
+        gridHelper.material.transparent = true;
+        this.scene.add(gridHelper);
+
+        // 创建后墙面
+        const wallHeight = 0.5;
+        const wallGeometry = new THREE.PlaneGeometry(groundSize, wallHeight);
+        const wallMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x888888, // 几乎白色的墙面
+            transparent: true,
+            opacity: 0.3
+        });
+        const backWall = new THREE.Mesh(wallGeometry, wallMaterial);
+        backWall.position.set(0, wallHeight / 2, -groundSize / 2);
+        backWall.receiveShadow = true;
+        this.scene.add(backWall);
+
+        // 创建左侧墙面
+        const leftWall = new THREE.Mesh(wallGeometry, wallMaterial);
+        leftWall.rotation.y = Math.PI / 2;
+        leftWall.position.set(-groundSize / 2, wallHeight / 2, 0);
+        leftWall.receiveShadow = true;
+        this.scene.add(leftWall);
+
+        // // 添加墙角线（装饰性）
+        const edgeGeometry = new THREE.CylinderGeometry(0.001, 0.001, wallHeight);
+        const edgeMaterial = new THREE.MeshLambertMaterial({ color: 0x777777 });
+        
+        // // 后墙和左墙的交界线
+        const cornerEdge = new THREE.Mesh(edgeGeometry, edgeMaterial);
+        cornerEdge.position.set(-groundSize / 2, wallHeight / 2, -groundSize / 2);
+        this.scene.add(cornerEdge);
+
+        // // 地面边界线
+        // const groundEdgeGeometry = new THREE.CylinderGeometry(0.005, 0.005, groundSize);
+        // groundEdgeGeometry.rotateZ(Math.PI / 2);
+        
+        // const backGroundEdge = new THREE.Mesh(groundEdgeGeometry, edgeMaterial);
+        // backGroundEdge.position.set(0, 0.005, -groundSize / 2);
+        // this.scene.add(backGroundEdge);
+        
+        // const leftGroundEdge = new THREE.Mesh(groundEdgeGeometry, edgeMaterial);
+        // leftGroundEdge.rotation.y = Math.PI / 2;
+        // leftGroundEdge.position.set(-groundSize / 2, 0.005, 0);
+        // this.scene.add(leftGroundEdge);
+
+        console.log('[RodManager] 环境创建完成：地面、墙面和装饰元素');
     }
 
     /**
@@ -232,18 +307,20 @@ class RodManager {
      */
     updateCameraView() {
         if (this.rods.length === 0) {
-            this.camera.position.set(0, 0.1, 0.3); // 默认位置
-            this.camera.lookAt(0, 0, 0);
+            // 默认相机位置，能看到地面和墙面
+            this.camera.position.set(1.5, 1.2, 1.8);
+            this.camera.lookAt(0, 0.3, 0);
             return;
         }
 
+        // 计算杆件的边界框
         let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = -Infinity;
         this.rods.forEach(rod => {
             minX = Math.min(minX, rod.position.x);
             maxX = Math.max(maxX, rod.position.x);
             minZ = Math.min(minZ, rod.position.z);
             maxZ = Math.max(maxZ, rod.position.z);
-            maxY = Math.max(maxY, rod.userData.length); // 杆件的最大长度作为Y轴的参考
+            maxY = Math.max(maxY, rod.userData.length);
         });
 
         const centerX = (minX + maxX) / 2;
@@ -251,20 +328,48 @@ class RodManager {
         const extentX = maxX - minX;
         const extentZ = maxZ - minZ;
         
-        const maxExtent = Math.max(extentX, extentZ, maxY); // 考虑杆件长度
+        const maxExtent = Math.max(extentX, extentZ, maxY);
 
-        // 基于最大范围调整相机位置
-        // 简单的启发式方法：相机距离与场景范围成正比
-        const camX = centerX;
-        const camY = maxY * 1.5 + maxExtent * 0.5; // 抬高相机，基于杆件高度和整体范围
-        const camZ = centerZ + maxExtent * 1.5;    // 拉远相机
+        // 根据杆件布局调整相机位置，确保能看到环境
+        let camX, camY, camZ;
+
+        if (this.displayModeConfig.mode === 'array') {
+            // 阵列模式：相机位置稍远，能看到整个阵列和周围环境
+            camX = centerX + maxExtent * 0.8;
+            camY = Math.max(maxY * 1.2, 0.8) + maxExtent * 0.3;
+            camZ = centerZ + maxExtent * 1.2;
+        } else {
+            // 线性模式：相机位置适中
+            camX = centerX + maxExtent * 0.6;
+            camY = Math.max(maxY * 1.0, 0.6) + maxExtent * 0.2;
+            camZ = centerZ + maxExtent * 1.0;
+        }
+
+        // 确保相机不会太靠近或太远
+        const minDistance = 0.5;
+        const maxDistance = 8.0;
+        const distance = Math.sqrt(camX * camX + camY * camY + camZ * camZ);
+        
+        if (distance < minDistance) {
+            const scale = minDistance / distance;
+            camX *= scale;
+            camY *= scale;
+            camZ *= scale;
+        } else if (distance > maxDistance) {
+            const scale = maxDistance / distance;
+            camX *= scale;
+            camY *= scale;
+            camZ *= scale;
+        }
 
         this.camera.position.set(camX, camY, camZ);
-        this.camera.lookAt(centerX, maxY / 3, centerZ); // 观察点调整为阵列中心偏上
+        
+        // 观察点设置：注视杆件区域的中心偏上位置
+        const lookAtY = Math.max(maxY / 3, 0.2);
+        this.camera.lookAt(0.04, 0.0, 0.0);
 
-        console.log('[RodManager.updateCameraView] Updated camera for new layout.');
-        console.log('[RodManager.updateCameraView] Camera position:', this.camera.position);
-        console.log('[RodManager.updateCameraView] Camera lookAt:', centerX, maxY / 3, centerZ);
+        console.log(`[RodManager.updateCameraView] 相机位置: (${camX.toFixed(2)}, ${camY.toFixed(2)}, ${camZ.toFixed(2)})`);
+        console.log(`[RodManager.updateCameraView] 观察点: (${centerX.toFixed(2)}, ${lookAtY.toFixed(2)}, ${centerZ.toFixed(2)})`);
     }
 
     /**

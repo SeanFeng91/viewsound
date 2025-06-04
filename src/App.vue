@@ -16,6 +16,7 @@ const isSimulationRunning = ref(false)
 const is3DInitialized = ref(false)
 const selectedRodIndex = ref(4)
 const audioEnabled = ref(true)
+const isFullscreen = ref(false)
 const currentConfig = ref({
   // 基础杆件参数 (主要用于线性模式或作为阵列/雕塑模式的默认值)
   rodCount: 10,
@@ -44,12 +45,24 @@ let audioGenerator = null
 // 生命周期
 onMounted(async () => {
   await initializeVibrationEngine()
+  
+  // 添加全屏状态监听
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+  document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+  document.addEventListener('MSFullscreenChange', handleFullscreenChange)
 })
 
 onUnmounted(() => {
   if (vibrationEngine) {
     vibrationEngine.cleanup()
   }
+  
+  // 清理全屏监听器
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+  document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+  document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
 })
 
 // 初始化振动引擎
@@ -476,6 +489,48 @@ function handleAudioPlaybackEnded() {
     // handleExcitationConfigUpdate(currentConfig.value); // Propagate this change
   }
 }
+
+function handleFullscreenChange() {
+  isFullscreen.value = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullscreenElement || document.MSFullscreenElement)
+  console.log('全屏状态:', isFullscreen.value ? '全屏' : '非全屏')
+  
+  // 全屏状态改变时，通知Three.js调整渲染器尺寸
+  if (rodManager) {
+    setTimeout(() => {
+      rodManager.onWindowResize()
+    }, 100) // 延迟一点确保DOM更新完成
+  }
+}
+
+// 全屏切换函数
+function toggleFullscreen() {
+  const container = threejsContainer.value
+  if (!container) return
+  
+  if (!isFullscreen.value) {
+    // 进入全屏
+    if (container.requestFullscreen) {
+      container.requestFullscreen()
+    } else if (container.webkitRequestFullscreen) {
+      container.webkitRequestFullscreen()
+    } else if (container.mozRequestFullScreen) {
+      container.mozRequestFullScreen()
+    } else if (container.msRequestFullscreen) {
+      container.msRequestFullscreen()
+    }
+  } else {
+    // 退出全屏
+    if (document.exitFullscreen) {
+      document.exitFullscreen()
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen()
+    } else if (document.mozCancelFullScreen) {
+      document.mozCancelFullScreen()
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen()
+    }
+  }
+}
 </script>
 
 <template>
@@ -518,11 +573,30 @@ function handleAudioPlaybackEnded() {
         <div class="lg:col-span-8 space-y-3 overflow-y-auto pl-1">
           <!-- 3D可视化 -->
           <div class="bg-gray-800 p-3  border border-gray-700">
-            <h3 class="text-lg font-semibold text-white mb-2">3D振动可视化</h3>
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="text-lg font-semibold text-white">3D振动可视化</h3>
+              <button 
+                @click="toggleFullscreen"
+                class="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 border border-gray-600 bg-gray-800"
+                :title="isFullscreen ? '退出全屏 (ESC)' : '全屏显示'"
+              >
+                <!-- 全屏图标 -->
+                <svg v-if="!isFullscreen" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                <!-- 退出全屏图标 -->
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5m0 0l5.5 5.5" />
+                </svg>
+              </button>
+            </div>
             <div 
               ref="threejsContainer"
               id="threejs-container"
-              class="h-64 md:h-80 bg-black relative overflow-hidden border border-gray-700"
+              :class="[
+                'bg-black relative overflow-hidden border border-gray-700',
+                isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : 'h-64 md:h-80'
+              ]"
             >
               <div 
                 v-if="!is3DInitialized"
@@ -531,6 +605,13 @@ function handleAudioPlaybackEnded() {
                 <div class="text-center">
                   <div class="animate-pulse text-2xl">🔧</div>
                   <p class="mt-1 text-sm">正在初始化3D场景...</p>
+                </div>
+              </div>
+              
+              <!-- 全屏状态下的退出提示 -->
+              <div v-if="isFullscreen" class="absolute top-4 right-4 z-10">
+                <div class="bg-black bg-opacity-50 text-white px-3 py-1 text-sm border border-gray-500 backdrop-blur-sm">
+                  按 ESC 键退出全屏
                 </div>
               </div>
             </div>
@@ -675,5 +756,22 @@ function handleAudioPlaybackEnded() {
 .lg\:col-span-4.overflow-y-auto::-webkit-scrollbar-thumb:hover,
 .lg\:col-span-8.overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background: #6b7280; /* Tailwind gray-500 */
+}
+
+/* 全屏模式样式 */
+#threejs-container.fixed {
+  background: black !important;
+  z-index: 9999;
+}
+
+/* 全屏模式下隐藏滚动条 */
+#threejs-container.fixed::-webkit-scrollbar {
+  display: none;
+}
+
+/* 确保全屏模式下Three.js canvas充满整个屏幕 */
+#threejs-container.fixed canvas {
+  width: 100vw !important;
+  height: 100vh !important;
 }
 </style>
