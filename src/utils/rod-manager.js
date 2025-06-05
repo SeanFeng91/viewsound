@@ -6,7 +6,7 @@
 import { MaterialProperties } from './materials.js';
 import { VibrationCalculator } from './vibration-calc.js';
 import { getArrayHeightFunction } from './math-functions.js'; // 导入高度函数获取器
-import { SculptureManager } from './sculpture-manager.js'; // 导入雕塑管理器
+import { SculptureManager, DEFAULT_SCULPTURE_CONFIG } from './sculpture-manager.js'; // 导入雕塑管理器和默认配置
 
 // 创建模块实例
 const materialProperties = new MaterialProperties();
@@ -46,13 +46,13 @@ class RodManager {
             baseHeight: 20,
             amplitude: 50,
             scaleFactor: 1.0,
-            // 雕塑参数
-            sculptureType: 'radial',           // 雕塑类型：radial, wing, spiral, butterfly, ring
-            sculptureRodCount: 50,             // 雕塑杆件数量
-            sculptureBaseLength: 20,           // 雕塑基础长度 (mm)
-            sculptureLengthVariation: 30,      // 雕塑长度变化 (mm)
-            sculptureScale: 1.0,               // 雕塑缩放因子
-            spiralTurns: 2,                    // 螺旋圈数
+            // 雕塑参数 - 从默认配置中获取
+            sculptureType: DEFAULT_SCULPTURE_CONFIG.type,           
+            sculptureRodCount: DEFAULT_SCULPTURE_CONFIG.rodCount,             
+            sculptureBaseLength: DEFAULT_SCULPTURE_CONFIG.baseLength,           
+            sculptureLengthVariation: DEFAULT_SCULPTURE_CONFIG.lengthVariation,      
+            sculptureScale: 1.0,               
+            spiralTurns: DEFAULT_SCULPTURE_CONFIG.spiralTurns,                    
             spacing: 20                        // 阵列模式间距 (mm)
         };
         
@@ -349,10 +349,35 @@ class RodManager {
             camY = Math.max(maxY * 1.2, 0.8) + maxExtent * 0.3;
             camZ = centerZ + maxExtent * 1.2;
         } else if (this.displayModeConfig.mode === 'sculpture') {
-            // 雕塑模式：相机视角略高一些，以便观察整个雕塑形状
-            camX = centerX + maxExtent * 0.7;
-            camY = Math.max(maxY * 1.5, 1.0) + maxExtent * 0.4;
-            camZ = centerZ + maxExtent * 1.3;
+            // 雕塑模式：根据雕塑类型调整相机视角
+            const sculptureType = this.displayModeConfig.type || this.displayModeConfig.sculptureType;
+            
+            if (sculptureType === 'radial' || sculptureType === 'butterfly') {
+                // 球形或蝴蝶状雕塑需要更高的视角
+                camX = centerX + maxExtent * 0.8;
+                camY = Math.max(maxY * 1.8, 1.2) + maxExtent * 0.5;
+                camZ = centerZ + maxExtent * 1.2;
+            } else if (sculptureType === 'spiral') {
+                // 螺旋雕塑需要倾斜视角
+                camX = centerX + maxExtent * 0.9;
+                camY = Math.max(maxY * 1.5, 1.0) + maxExtent * 0.4;
+                camZ = centerZ + maxExtent * 1.0;
+            } else if (sculptureType === 'wing') {
+                // 翼状雕塑需要侧面视角
+                camX = centerX + maxExtent * 0.4;
+                camY = Math.max(maxY * 1.3, 0.9) + maxExtent * 0.3;
+                camZ = centerZ + maxExtent * 1.5;
+            } else if (sculptureType === 'ring') {
+                // 环形雕塑需要更俯视的角度
+                camX = centerX + maxExtent * 0.3;
+                camY = Math.max(maxY * 2.0, 1.5) + maxExtent * 0.6;
+                camZ = centerZ + maxExtent * 0.3;
+            } else {
+                // 默认雕塑视角
+                camX = centerX + maxExtent * 0.7;
+                camY = Math.max(maxY * 1.5, 1.0) + maxExtent * 0.4;
+                camZ = centerZ + maxExtent * 1.3;
+            }
         } else {
             // 线性模式：相机位置适中
             camX = centerX + maxExtent * 0.6;
@@ -621,6 +646,14 @@ class RodManager {
      */
     setDisplayMode(config) {
         console.log('[RodManager.setDisplayMode] 收到配置:', JSON.stringify(config));
+        
+        // 添加详细日志跟踪type参数
+        if (config.mode === 'sculpture') {
+            console.log('[RodManager.setDisplayMode] 雕塑类型参数检查:',
+                        'type =', config.type,
+                        'sculptureType =', this.displayModeConfig.sculptureType);
+        }
+        
         this.displayModeConfig = { ...this.displayModeConfig, ...config };
         console.log('[RodManager] 显示模式配置已更新:', this.displayModeConfig);
     }
@@ -744,13 +777,14 @@ class RodManager {
         
         // 设置雕塑配置 - 使用displayModeConfig的参数
         const sculptureConfig = {
-            type: this.displayModeConfig.type || this.displayModeConfig.sculptureType || 'radial',
-            rodCount: this.displayModeConfig.rodCount || this.displayModeConfig.sculptureRodCount || 50,
-            baseLength: this.displayModeConfig.baseLength || this.displayModeConfig.sculptureBaseLength || 20, // 保持mm单位
-            lengthVariation: this.displayModeConfig.lengthVariation || this.displayModeConfig.sculptureLengthVariation || 30, // 保持mm单位
-            radius: (this.displayModeConfig.scale || this.displayModeConfig.sculptureScale || 1.0) * 0.15, // 雕塑半径 (m)
-            height: (this.displayModeConfig.scale || this.displayModeConfig.sculptureScale || 1.0) * 0.1,  // 高度变化 (m)
-            spiralTurns: this.displayModeConfig.spiralTurns || 2
+            // 修复：优先使用type参数，其次使用sculptureType参数，最后使用默认配置
+            type: this.displayModeConfig.type || this.displayModeConfig.sculptureType || DEFAULT_SCULPTURE_CONFIG.type,
+            rodCount: this.displayModeConfig.rodCount || this.displayModeConfig.sculptureRodCount || DEFAULT_SCULPTURE_CONFIG.rodCount,
+            baseLength: this.displayModeConfig.baseLength || this.displayModeConfig.sculptureBaseLength || DEFAULT_SCULPTURE_CONFIG.baseLength, 
+            lengthVariation: this.displayModeConfig.lengthVariation || this.displayModeConfig.sculptureLengthVariation || DEFAULT_SCULPTURE_CONFIG.lengthVariation, 
+            radius: (this.displayModeConfig.scale || this.displayModeConfig.sculptureScale || 1.0) * 0.15, 
+            height: (this.displayModeConfig.scale || this.displayModeConfig.sculptureScale || 1.0) * 0.1,  
+            spiralTurns: this.displayModeConfig.spiralTurns || DEFAULT_SCULPTURE_CONFIG.spiralTurns
         };
         
         console.log('[RodManager.createSculptureRods] 雕塑配置:', sculptureConfig);
@@ -1034,6 +1068,42 @@ class RodManager {
         }
         
         console.log(`[RodManager] 设置预设视角: ${viewType}`)
+    }
+
+    /**
+     * 重置雕塑配置为默认值
+     */
+    resetSculptureConfig() {
+        // 从SculptureManager获取默认配置
+        const defaultConfig = SculptureManager.getDefaultConfig();
+        
+        // 更新displayModeConfig中的雕塑相关参数
+        this.displayModeConfig.type = defaultConfig.type;
+        this.displayModeConfig.sculptureType = defaultConfig.type;
+        this.displayModeConfig.rodCount = defaultConfig.rodCount;
+        this.displayModeConfig.sculptureRodCount = defaultConfig.rodCount;
+        this.displayModeConfig.baseLength = defaultConfig.baseLength;
+        this.displayModeConfig.sculptureBaseLength = defaultConfig.baseLength;
+        this.displayModeConfig.lengthVariation = defaultConfig.lengthVariation;
+        this.displayModeConfig.sculptureLengthVariation = defaultConfig.lengthVariation;
+        this.displayModeConfig.spiralTurns = defaultConfig.spiralTurns;
+        
+        console.log('[RodManager] 雕塑配置已重置为默认值:', this.displayModeConfig);
+        
+        if (this.displayModeConfig.mode === 'sculpture') {
+            // 如果当前是雕塑模式，重新创建杆件
+            this.createAllRods();
+        }
+        
+        return this.displayModeConfig;
+    }
+    
+    /**
+     * 获取可用的雕塑类型列表
+     * @returns {Array} 雕塑类型列表
+     */
+    getAvailableSculptureTypes() {
+        return SculptureManager.getAvailableTypes();
     }
 }
 

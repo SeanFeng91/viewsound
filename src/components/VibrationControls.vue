@@ -530,6 +530,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { DEFAULT_SCULPTURE_CONFIG } from '../utils/sculpture-manager.js'
 
 // Props 和 Emits
 const emit = defineEmits([
@@ -567,9 +568,10 @@ const excitationConfig = ref({
   timeScale: 1.0
 })
 
-// 新增：显示模式配置
+// 新增：显示模式配置 - 使用DEFAULT_SCULPTURE_CONFIG
 const displayModeConfig = ref({
   mode: 'linear',
+  // 阵列参数
   arrayGridX: 10,
   arrayGridY: 10,
   arrayHeightFunction: 'sine',
@@ -577,13 +579,14 @@ const displayModeConfig = ref({
   arrayAmplitude: 50,
   arrayScaleFactor: 1.0,
   arraySpacing: 20,
-  sculptureType: 'spiral',
+  // 雕塑参数 - 从默认配置中获取
+  sculptureType: DEFAULT_SCULPTURE_CONFIG.type,
   sculptureDensity: 'medium',
   sculptureScale: 1.0,
-  sculptureRodCount: 50,
-  sculptureBaseLength: 20,
-  sculptureLengthVariation: 0.3,
-  spiralTurns: 3
+  sculptureRodCount: DEFAULT_SCULPTURE_CONFIG.rodCount,
+  sculptureBaseLength: DEFAULT_SCULPTURE_CONFIG.baseLength,
+  sculptureLengthVariation: DEFAULT_SCULPTURE_CONFIG.lengthVariation,
+  spiralTurns: DEFAULT_SCULPTURE_CONFIG.spiralTurns
 })
 
 const isRunning = ref(false)
@@ -738,13 +741,29 @@ function getCurrentDisplayModeConfig() {
   return { ...displayModeConfig.value }
 }
 
+// 更新雕塑配置方法 - 接收外部更新
+function updateSculptureConfig(config) {
+  if (config) {
+    // 只更新雕塑相关参数，不影响其他配置
+    displayModeConfig.value.sculptureType = config.sculptureType || displayModeConfig.value.sculptureType;
+    displayModeConfig.value.sculptureRodCount = config.sculptureRodCount || displayModeConfig.value.sculptureRodCount;
+    displayModeConfig.value.sculptureBaseLength = config.sculptureBaseLength || displayModeConfig.value.sculptureBaseLength;
+    displayModeConfig.value.sculptureLengthVariation = config.sculptureLengthVariation || displayModeConfig.value.sculptureLengthVariation;
+    displayModeConfig.value.spiralTurns = config.spiralTurns || displayModeConfig.value.spiralTurns;
+    
+    // 更新显示模式配置
+    updateDisplayModeConfig();
+  }
+}
+
 defineExpose({
   updateRodStatus,
   setRunningState,
   updateCurrentAudioFrequency,
   updateExcitationTypeExternally,
   getCurrentRodConfig,
-  getCurrentDisplayModeConfig
+  getCurrentDisplayModeConfig,
+  updateSculptureConfig
 })
 </script>
 

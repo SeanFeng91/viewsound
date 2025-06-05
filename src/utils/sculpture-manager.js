@@ -3,20 +3,23 @@
  * 实现各种预设的几何雕塑形状
  */
 
+// 默认雕塑配置
+const DEFAULT_SCULPTURE_CONFIG = {
+    type: 'radial',          // 雕塑类型
+    rodCount: 150,            // 杆件总数
+    baseLength: 20,          // 基础长度 (mm)
+    lengthVariation: 100,     // 长度变化范围 (mm)
+    radius: 0.15,           // 雕塑半径 (m)
+    height: 0.1,            // 雕塑高度变化 (m)
+    angleOffset: 0,         // 角度偏移
+    spiralTurns: 3,         // 螺旋圈数
+    symmetry: true          // 是否对称
+};
+
 class SculptureManager {
     constructor() {
         // 雕塑配置
-        this.sculptureConfig = {
-            type: 'radial',          // 雕塑类型
-            rodCount: 60,            // 杆件总数
-            baseLength: 20,          // 基础长度 (mm)
-            lengthVariation: 30,     // 长度变化范围 (mm)
-            radius: 0.15,           // 雕塑半径 (m)
-            height: 0.1,            // 雕塑高度变化 (m)
-            angleOffset: 0,         // 角度偏移
-            spiralTurns: 2,         // 螺旋圈数
-            symmetry: true          // 是否对称
-        };
+        this.sculptureConfig = { ...DEFAULT_SCULPTURE_CONFIG };
     }
 
     /**
@@ -25,7 +28,7 @@ class SculptureManager {
      * @returns {Array} 杆件数据数组
      */
     generateSculptureRods(config = {}) {
-        this.sculptureConfig = { ...this.sculptureConfig, ...config };
+        this.sculptureConfig = { ...DEFAULT_SCULPTURE_CONFIG, ...config };
         
         switch (this.sculptureConfig.type) {
             case 'radial':
@@ -60,6 +63,7 @@ class SculptureManager {
             const x = radius * Math.sin(phi) * Math.cos(theta);
             const y = radius * Math.cos(phi);
             const z = radius * Math.sin(phi) * Math.sin(theta);
+            const z_p=z+radius;
 
             // 计算杆件方向（从中心指向外）
             const length = Math.sqrt(x*x + y*y + z*z);
@@ -69,7 +73,7 @@ class SculptureManager {
 
             // 杆件长度：基于距离中心的角度变化
             const distanceFromCenter = Math.sqrt(x*x + z*z);
-            const lengthFactor = 0.5 + 0.5 * (distanceFromCenter / radius);
+            const lengthFactor = 0.3 + 0.7 * (distanceFromCenter / radius);
             const rodLength = (baseLength + lengthVariation * lengthFactor) / 1000; // mm to m
 
             rods.push({
@@ -293,10 +297,18 @@ class SculptureManager {
     }
 
     /**
-     * 获取可用的雕塑类型
+     * 获取默认雕塑配置
+     * @returns {Object} 默认配置
+     */
+    static getDefaultConfig() {
+        return { ...DEFAULT_SCULPTURE_CONFIG };
+    }
+
+    /**
+     * 获取所有可用雕塑类型
      * @returns {Array} 雕塑类型列表
      */
-    getAvailableTypes() {
+    static getAvailableTypes() {
         return [
             { value: 'radial', name: '放射状', description: '从中心向外放射的球形分布' },
             { value: 'wing', name: '翼状', description: 'V字形鸟翼效果' },
@@ -308,4 +320,4 @@ class SculptureManager {
 }
 
 // ES6 模块导出
-export { SculptureManager }; 
+export { SculptureManager, DEFAULT_SCULPTURE_CONFIG }; 

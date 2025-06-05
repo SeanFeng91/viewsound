@@ -367,6 +367,10 @@ function handleDisplayModeUpdate(config) {
   currentConfig.value.displayParams = { ...config }; // 存储完整模式参数
   
   if (rodManager) {
+    // 记录config.type到日志中
+    if (config.mode === 'sculpture' && config.type) {
+      console.log('App.vue: 雕塑类型:', config.type);
+    }
     rodManager.setDisplayMode(config); // 将完整模式配置传递给RodManager
   }
   
@@ -564,6 +568,20 @@ function getViewName(viewType) {
     'auto': '自动'
   }
   return viewNames[viewType] || '未知'
+}
+
+// 新增：重置雕塑配置
+function resetSculptureConfig() {
+  if (rodManager) {
+    const updatedConfig = rodManager.resetSculptureConfig();
+    console.log('App.vue: 雕塑配置已重置');
+    
+    // 如果VibrationControls组件存在，更新其UI
+    if (vibrationControls.value) {
+      // 这里需要确保VibrationControls有对应的方法接收更新
+      vibrationControls.value.updateSculptureConfig(updatedConfig);
+    }
+  }
 }
 </script>
 
