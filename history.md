@@ -1038,3 +1038,70 @@ this.updateVisualization({
     *   `App.vue` 接收到更新后，再调用 `rodManager.setDisplayMode()` 和 `rodManager.createAllRods()` 来应用新的配置并重新生成场景。
 
 通过以上步骤，空间雕塑功能得以实现，用户可以通过UI选择不同的雕塑形态并调整其参数，动态生成复杂的三维杆件排列。 
+
+---
+
+## 📅 2024年12月19日 - 体验优化与问题修复
+
+### 🌟 功能增强与体验优化
+
+#### 1. 振动波形图和共振分析图纵坐标自适应
+- **问题**：更新数据时，X轴和Y轴的刻度未能根据数据的实际范围动态调整，导致小振幅波形显示不清晰，或数据点贴近图表边缘。
+- **解决方案**：
+    - 为X轴和Y轴创建了独立的CSS类 (`.x-grid` 和 `.y-grid`)，以便分别控制其样式和行为。
+    - 确保在数据更新时，X轴和Y轴的域（domain）会根据新的数据范围同步刷新。
+    - 针对小振幅波形，增加了最小显示范围（例如，Y轴至少显示±0.001mm），避免波形过于扁平。
+    - 在计算Y轴范围时增加了合理的边距（例如，最大值的10%），避免数据点直接贴在图表边缘。
+    - 优化了共振分析图的Y轴计算逻辑，使其能够同时考虑到杆件的固有频率和当前的激励频率，确保两种频率都能在图表中清晰展示。
+- **主要涉及文件**： `src/utils/visualization.js`
+
+#### 2. 预设音频文件加载功能
+- **问题**：用户初次使用或手边没有MP3文件时，无法快速体验音频驱动的振动效果。
+- **解决方案**：
+    - 在`src/components/AudioPlayer.vue`中添加了一个"加载示例音频"的按钮。
+    - 实现`loadDemoAudio`函数，允许用户一键加载预设的MP3文件 (`Dance_For_Me_Wallis.mp3`)。
+    - 最初尝试从CDN加载，后根据用户反馈调整为从项目本地（最初是根目录，后改为`public/assets/`目录）加载。
+    - 对文件名中的空格和特殊字符进行了处理，确保URL的正确性。
+    - 增加了加载状态提示和详细的错误处理机制，提升用户体验。
+- **主要涉及文件**： `src/components/AudioPlayer.vue`
+
+#### 3. 统一杆件参数配置
+- **问题**：杆件的直径等参数在代码的不同部分存在多个硬编码的初始值 (例如 2mm, 1.8mm, 1mm)，导致参数不一致且难以维护。
+- **解决方案**：
+    - 创建了统一的配置文件 `src/utils/config.js`。
+    - 在`config.js`中定义了 `DEFAULT_ROD_CONFIG` 和 `DEFAULT_EXCITATION_CONFIG` 作为所有杆件和激励参数的单一来源。
+    - 将所有相关文件 (`App.vue`, `VibrationControls.vue`, `rod-manager.js`) 中的硬编码初始值替换为从`config.js`导入的配置。
+    - 统一将杆件默认直径设置为1.8mm，默认阻尼设置为0.05。
+- **主要涉及文件**： `src/utils/config.js`, `src/App.vue`, `src/components/VibrationControls.vue`, `src/utils/rod-manager.js`
+
+### 🐛 问题修复
+
+#### 1. 修复导出共振数据失败的问题
+- **问题**：点击"导出共振数据"时，控制台报错"材料属性模块未加载"，导致导出失败。
+- **原因**：`generateResonanceData`函数尝试通过`window.MaterialProperties`访问材料属性模块，但该模块在`initializeVibrationEngine`中导入后并未正确赋值给`window`对象。
+- **解决方案**：
+    - 在`App.vue`的`initializeVibrationEngine`函数中，将导入的`MaterialProperties`模块显式赋值给`window.MaterialProperties`。
+    - 修改`generateResonanceData`函数，确保直接从`window.MaterialProperties`获取材料属性实例。
+- **主要涉及文件**： `src/App.vue`
+
+#### 2. 修复重置功能未清除图表的问题
+- **问题**：点击"重置"按钮后，各杆件响应强度图和共振分析图并未清空，仍然显示上一次模拟的数据。
+- **解决方案**：
+    - 在`App.vue`的`handleResetSimulation`函数中，增加了调用`visualization`模块相应方法来清空频率响应图 (`updateFrequencyPlot([])`) 和共振分析图 (`updateResonancePlot([], currentConfig.value.frequency)`) 的逻辑。
+    - 同时，在`src/utils/rod-manager.js`的`reset`方法中，也补充了清除这些图表的逻辑，确保无论从哪个入口调用重置，图表都能被正确清空。
+- **主要涉及文件**： `src/App.vue`, `src/utils/rod-manager.js`
+
+#### 3. 修复示例音频因路径问题加载失败
+- **问题**：将项目部署到服务器后，加载示例音频时提示"Unable to decode audio data"或网络请求404。
+- **原因**：
+    - 文件名中包含空格 (`Abel Korzeniowski - Dance For Me Wallis.mp3`)，在URL中未正确编码或服务器处理不当。
+    - 文件在服务器上的实际路径与代码中引用的路径不符。
+- **解决方案**：
+    - 将示例音频文件名更改为不含空格的`Dance_For_Me_Wallis.mp3`。
+    - 根据用户将文件移动到`public/assets/`目录的操作，将`AudioPlayer.vue`中的`demoUrl`更新为`/assets/Dance_For_Me_Wallis.mp3`。Vite在构建时会将`public`目录内容复制到输出根目录，因此该路径在部署后能正确访问。
+    - 增强了`loadDemoAudio`函数中的错误处理和日志输出，方便定位问题。
+- **主要涉及文件**： `src/components/AudioPlayer.vue`
+
+### UI及其他调整
+- 对图表标题和描述文字进行了微调，使其更清晰易懂。
+- 调整了部分3D雕塑模式的默认相机视角参数，以获得更好的初始展示效果。
