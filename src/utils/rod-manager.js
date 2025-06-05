@@ -368,8 +368,8 @@ class RodManager {
             } else if (sculptureType === 'spiral') {
                 // 螺旋雕塑需要倾斜视角
                 camX = 0;
-                camY = 0.8;
-                camZ = 0.5;
+                camY = 0.45;
+                camZ = 0.9;
             } else if (sculptureType === 'wing') {
                 // 翼状雕塑需要侧面视角
                 camX = 0.5;
@@ -888,9 +888,19 @@ class RodManager {
         this.isPlaying = false;
         this.createAllRods();
         
-        // 清空波形数据
+        // 清空所有可视化数据
         if (typeof window !== 'undefined' && window.visualization) {
+            // 清除波形图
             window.visualization.clearWaveformData();
+            window.visualization.clearWaveformPlot();
+            
+            // 清除频率响应图表
+            window.visualization.updateFrequencyPlot([]);
+            
+            // 清除共振分析图表
+            window.visualization.updateResonancePlot([], this.excitationFreq);
+            
+            console.log('Rod Manager: 已重置所有图表数据');
         }
     }
 

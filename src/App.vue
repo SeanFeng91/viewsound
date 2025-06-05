@@ -82,6 +82,9 @@ async function initializeVibrationEngine() {
     const { Visualization } = await import('./utils/visualization.js')
     const { AudioGenerator } = await import('./utils/audio-generator.js')
     
+    // 将MaterialProperties设置为window对象，以便其他函数访问
+    window.MaterialProperties = MaterialProperties
+    
     // 初始化3D管理器
     if (threejsContainer.value) {
       rodManager = new RodManager()
@@ -290,6 +293,21 @@ function handleResetSimulation() {
   if (audioPlayer.value) {
     audioPlayer.value.stopAudioExcitation()
   }
+  
+  // 清除所有图表数据
+  if (visualization) {
+    // 清除波形图
+    visualization.clearWaveformData();
+    visualization.clearWaveformPlot();
+    
+    // 清除频率响应图表
+    visualization.updateFrequencyPlot([]);
+    
+    // 清除共振分析图表
+    visualization.updateResonancePlot([], currentConfig.value.frequency);
+    
+    console.log('✓ 已重置所有可视化图表');
+  }
 }
 
 function handleExportResonanceData() {
@@ -417,15 +435,15 @@ function getRodLength(index) {
 function generateResonanceData() {
   // 生成共振分析数据
   const data = []
-  const { MaterialProperties } = window.MaterialProperties || {}
   
-  if (!MaterialProperties) {
+  // 使用window上存储的MaterialProperties
+  if (!window.MaterialProperties) {
     throw new Error('材料属性模块未加载')
   }
   
-  const material = MaterialProperties.get(currentConfig.value.material)
+  const material = window.MaterialProperties.get(currentConfig.value.material)
   const excitationFreq = currentConfig.value.frequency
-  const tolerance = 0.01 // ±3%容差
+  const tolerance = 0.01 // ±1%容差
   
   for (let i = 0; i < currentConfig.value.rodCount; i++) {
     const length = getRodLength(i) / 1000 // 转换为米
@@ -753,25 +771,23 @@ function resetArrayConfig() {
 
             <!-- 频率图 -->
             <div class="bg-gray-800 border border-gray-700">
-              <div class="p-2 border-b border-gray-700 h-12 flex items-center">
-                <h4 class="text-sm font-medium text-white">各杆件响应强度</h4>
+              <div class="p-2 border-b border-gray-700">
+                <h4 class="text-sm font-medium text-white text-center">各长度杆件响应强度 (显示不同长度杆件对当前激励频率的响应强度)</h4>
               </div>
               <div id="frequency-plot" class="w-full h-48"></div>
-              <div class="px-2 py-1 text-xs text-gray-400 border-t border-gray-700">
-                显示不同长度杆件对当前激励频率的响应强度
-              </div>
+              
             </div>
           </div>
 
           <!-- 共振分析图 -->
           <div class="bg-gray-800 border border-gray-700">
             <div class="p-2 border-b border-gray-700">
-              <h3 class="text-sm font-medium text-white">共振分析</h3>
+              <h3 class="text-sm font-medium text-white">共振分析 (显示各杆件固有频率与激励频率的关系，红点表示共振杆件)</h3>
             </div>
             <div id="resonance-plot" class="w-full h-48"></div>
-            <div class="px-2 py-1 text-xs text-gray-400 border-t border-gray-700">
-              显示各杆件固有频率与激励频率的关系，红点表示共振杆件
-            </div>
+            <!-- <div class="px-2 py-1 text-xs text-gray-400 border-t border-gray-700">
+              
+            </div> -->
           </div>
         </div>
       </div>

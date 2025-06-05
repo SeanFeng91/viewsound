@@ -445,7 +445,7 @@
       <h4 class="text-sm font-medium text-white">模拟控制</h4>
       <div class="p-2 bg-gray-700 border border-gray-600">
         <!-- 主控制按钮组 -->
-        <div class="grid grid-cols-3 gap-1">
+        <div class="grid grid-cols-2 gap-1">
           <button 
             @click="toggleSimulation" 
             class="flex items-center justify-center px-3 py-2 text-xs font-medium transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-offset-gray-800"
@@ -466,7 +466,8 @@
             </svg>
             重置
           </button>
-          <button 
+          <!-- 导出待完成 -->
+          <!-- <button 
             @click="exportData"
             class="flex items-center justify-center px-3 py-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-gray-800"
           >
@@ -474,7 +475,7 @@
               <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
             </svg>
             导出
-          </button>
+          </button> -->
         </div>
 
         <!-- 音频控制开关 -->
