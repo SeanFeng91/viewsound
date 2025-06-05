@@ -32,7 +32,7 @@
               </div>
               <input 
                 v-model.number="displayModeConfig.arrayGridX"
-                type="range" min="10" max="50" 
+                type="range" min="10" max="100" 
                 class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
                 @input="updateDisplayModeConfig"
               />
@@ -44,7 +44,7 @@
               </div>
               <input 
                 v-model.number="displayModeConfig.arrayGridY"
-                type="range" min="10" max="50" 
+                type="range" min="10" max="100" 
                 class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
                 @input="updateDisplayModeConfig"
               />
@@ -202,7 +202,7 @@
               </div>
               <input 
                 v-model.number="displayModeConfig.sculptureRodCount"
-                type="range" min="20" max="200" 
+                type="range" min="100" max="500" 
                 class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
                 @input="updateDisplayModeConfig"
               />
@@ -571,7 +571,7 @@ const excitationConfig = ref({
 
 // 新增：显示模式配置 - 使用DEFAULT_SCULPTURE_CONFIG和DEFAULT_ARRAY_CONFIG
 const displayModeConfig = ref({
-  mode: 'linear',
+  mode: 'sculpture',  // 修改：初始模式改为雕塑
   // 阵列参数 - 从默认配置中获取
   arrayGridX: DEFAULT_ARRAY_CONFIG.gridX,
   arrayGridY: DEFAULT_ARRAY_CONFIG.gridY,
@@ -581,7 +581,7 @@ const displayModeConfig = ref({
   arrayScaleFactor: DEFAULT_ARRAY_CONFIG.scaleFactor,
   arraySpacing: DEFAULT_ARRAY_CONFIG.spacing,
   // 雕塑参数 - 从默认配置中获取
-  sculptureType: DEFAULT_SCULPTURE_CONFIG.type,
+  sculptureType: 'butterfly',  // 修改：初始雕塑类型改为butterfly
   sculptureDensity: 'medium',
   sculptureScale: 1.0,
   sculptureRodCount: DEFAULT_SCULPTURE_CONFIG.rodCount,

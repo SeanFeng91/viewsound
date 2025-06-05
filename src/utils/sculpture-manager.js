@@ -6,7 +6,7 @@
 // 默认雕塑配置
 const DEFAULT_SCULPTURE_CONFIG = {
     type: 'radial',          // 雕塑类型
-    rodCount: 150,            // 杆件总数
+    rodCount: 300,            // 杆件总数
     baseLength: 20,          // 基础长度 (mm)
     lengthVariation: 100,     // 长度变化范围 (mm)
     radius: 0.15,           // 雕塑半径 (m)

@@ -11,7 +11,7 @@ const DEFAULT_ARRAY_CONFIG = {
     baseHeight: 20,          // 基础高度 (mm)
     amplitude: 80,           // 高度变化幅度 (mm)
     scaleFactor: 2.0,        // 缩放因子
-    spacing: 10              // 杆件间距 (mm)
+    spacing: 15              // 杆件间距 (mm)
 };
 
 class ArrayManager {
@@ -76,19 +76,19 @@ class ArrayManager {
         const errors = [];
         
         // 验证网格大小
-        if (config.gridX < 1 || config.gridX > 50) {
-            errors.push('X方向网格数量必须在1-50之间');
+        if (config.gridX < 1 || config.gridX > 100) {
+            errors.push('X方向网格数量必须在1-100之间');
         }
-        if (config.gridY < 1 || config.gridY > 50) {
-            errors.push('Y方向网格数量必须在1-50之间');
+        if (config.gridY < 1 || config.gridY > 100) {
+            errors.push('Y方向网格数量必须在1-100之间');
         }
         
         // 验证高度参数
-        if (config.baseHeight < 1 || config.baseHeight > 200) {
-            errors.push('基础高度必须在1-200mm之间');
+        if (config.baseHeight < 1 || config.baseHeight > 300) {
+            errors.push('基础高度必须在1-300mm之间');
         }
-        if (config.amplitude < 0 || config.amplitude > 200) {
-            errors.push('高度幅度必须在0-200mm之间');
+        if (config.amplitude < 0 || config.amplitude > 300) {
+            errors.push('高度幅度必须在0-300mm之间');
         }
         
         // 验证间距

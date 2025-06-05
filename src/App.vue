@@ -22,7 +22,7 @@ const currentConfig = ref({
   rodCount: 10,
   startLength: 20, // mm
   lengthStep: 10,  // mm
-  diameter: 5,     // mm
+  diameter: 1,     // mm
   // 材料
   material: 'steel',
   // 激励

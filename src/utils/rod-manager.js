@@ -39,7 +39,7 @@ class RodManager {
         
         // 显示模式配置
         this.displayModeConfig = {
-            mode: 'linear',
+            mode: 'sculpture',  // 修改：初始模式改为雕塑
             // 阵列参数 - 从默认配置中获取
             gridX: DEFAULT_ARRAY_CONFIG.gridX,
             gridY: DEFAULT_ARRAY_CONFIG.gridY,
@@ -49,7 +49,8 @@ class RodManager {
             scaleFactor: DEFAULT_ARRAY_CONFIG.scaleFactor,
             spacing: DEFAULT_ARRAY_CONFIG.spacing,
             // 雕塑参数 - 从默认配置中获取
-            sculptureType: DEFAULT_SCULPTURE_CONFIG.type,           
+            type: 'butterfly',  // 修改：初始雕塑类型改为butterfly
+            sculptureType: 'butterfly',  // 修改：同步设置
             sculptureRodCount: DEFAULT_SCULPTURE_CONFIG.rodCount,             
             sculptureBaseLength: DEFAULT_SCULPTURE_CONFIG.baseLength,           
             sculptureLengthVariation: DEFAULT_SCULPTURE_CONFIG.lengthVariation,      
@@ -102,7 +103,7 @@ class RodManager {
 
         const aspect = this.container.clientWidth / this.container.clientHeight;
         this.camera = new THREE.PerspectiveCamera(25, aspect, 0.01, 1000); // 稍微增大FOV
-        this.camera.position.set(0, 0.1, 0.3); // 初始相机位置，会被updateCameraView覆盖
+        this.camera.position.set(0.4, 1, 1); // 初始相机位置，会被updateCameraView覆盖
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
@@ -319,7 +320,7 @@ class RodManager {
     updateCameraView() {
         if (this.rods.length === 0) {
             // 默认相机位置，能看到地面和墙面
-            this.camera.position.set(1.5, 1.2, 1.8);
+            this.camera.position.set(0.4, 1.0, 1.0);
             this.camera.lookAt(0, 0.3, 0);
             return;
         }
@@ -346,33 +347,44 @@ class RodManager {
 
         if (this.displayModeConfig.mode === 'array') {
             // 阵列模式：相机位置稍远，能看到整个阵列和周围环境
-            camX = centerX + maxExtent * 0.8;
-            camY = Math.max(maxY * 1.2, 0.8) + maxExtent * 0.3;
-            camZ = centerZ + maxExtent * 1.2;
+            // camX = centerX + maxExtent * 0.8;
+            // camY = Math.max(maxY * 1.2, 0.8) + maxExtent * 0.3;
+            // camZ = centerZ + maxExtent * 1.2;
+            camX = 0.0;
+            camY = 0.8;
+            camZ = 1;
         } else if (this.displayModeConfig.mode === 'sculpture') {
             // 雕塑模式：根据雕塑类型调整相机视角
             const sculptureType = this.displayModeConfig.type || this.displayModeConfig.sculptureType;
             
-            if (sculptureType === 'radial' || sculptureType === 'butterfly') {
+            if (sculptureType === 'butterfly') {
                 // 球形或蝴蝶状雕塑需要更高的视角
-                camX = centerX + maxExtent * 0.8;
-                camY = Math.max(maxY * 1.8, 1.2) + maxExtent * 0.5;
-                camZ = centerZ + maxExtent * 1.2;
+                // camX = centerX + maxExtent * 0.9+1;
+                // camY = Math.max(maxY * 1.1, 0.9) + maxExtent * 0.0+0.;
+                // camZ = centerZ + maxExtent * 0.7+0.2;
+                camX = 0;
+                camY = 0.5;
+                camZ = 0.8;
+            } else if (sculptureType === 'radial') {
+                // 螺旋雕塑需要倾斜视角
+                camX = 0;
+                camY = 0.8;
+                camZ = 0.8;
             } else if (sculptureType === 'spiral') {
                 // 螺旋雕塑需要倾斜视角
-                camX = centerX + maxExtent * 0.9;
-                camY = Math.max(maxY * 1.5, 1.0) + maxExtent * 0.4;
-                camZ = centerZ + maxExtent * 1.0;
+                camX = 0;
+                camY = 0.8;
+                camZ = 0.8;
             } else if (sculptureType === 'wing') {
                 // 翼状雕塑需要侧面视角
-                camX = centerX + maxExtent * 0.4;
-                camY = Math.max(maxY * 1.3, 0.9) + maxExtent * 0.3;
-                camZ = centerZ + maxExtent * 1.5;
+                camX = 0.5;
+                camY = 0.1;
+                camZ = 0.3;
             } else if (sculptureType === 'ring') {
                 // 环形雕塑需要更俯视的角度
-                camX = centerX + maxExtent * 0.3;
-                camY = Math.max(maxY * 2.0, 1.5) + maxExtent * 0.6;
-                camZ = centerZ + maxExtent * 0.3;
+                camX = 0.5;
+                camY = 0.5;
+                camZ = 0.5;
             } else {
                 // 默认雕塑视角
                 camX = centerX + maxExtent * 0.7;
@@ -407,7 +419,9 @@ class RodManager {
         
         // 观察点设置：注视杆件区域的中心偏上位置
         const lookAtY = Math.max(maxY / 3, 0.2);
-        this.camera.lookAt(centerX, lookAtY, centerZ); // 修正：看向杆件中心
+        // this.camera.lookAt(centerX, lookAtY, centerZ); // 修正：看向杆件中心
+        this.camera.lookAt(0, 0, 0); // 修正：看向杆件中心
+
 
         console.log(`[RodManager.updateCameraView] 相机位置: (${camX.toFixed(2)}, ${camY.toFixed(2)}, ${camZ.toFixed(2)})`);
         console.log(`[RodManager.updateCameraView] 观察点: (${centerX.toFixed(2)}, ${lookAtY.toFixed(2)}, ${centerZ.toFixed(2)})`);
@@ -733,7 +747,7 @@ class RodManager {
                 }
 
                 // 确保杆件长度在合理范围内 (例如，最小1mm)
-                rodLengthMm = Math.max(1, rodLengthMm);
+                rodLengthMm = Math.max(0.5, rodLengthMm);
                 const rodLengthM = rodLengthMm / 1000; // mm to m
 
                 const rod = this.createSingleRod(rodLengthM, rodRadius, material.color);
@@ -939,11 +953,44 @@ class RodManager {
                 
                 this.camera.lookAt(lookAtX, lookAtY, lookAtZ);
                 
+                // 减少输出频率，每5次移动输出一次
+                if (event.movementX % 5 === 0 || event.movementY % 5 === 0) {
+                    // 在控制台输出相机位置和观察点信息
+                    console.log(`视角信息 | 相机: (${this.camera.position.x.toFixed(2)}, ${this.camera.position.y.toFixed(2)}, ${this.camera.position.z.toFixed(2)}) | 观察点: (${lookAtX.toFixed(2)}, ${lookAtY.toFixed(2)}, ${lookAtZ.toFixed(2)})`);
+                    console.log(`一键复制: this.camera.position.set(${this.camera.position.x.toFixed(2)}, ${this.camera.position.y.toFixed(2)}, ${this.camera.position.z.toFixed(2)}); this.camera.lookAt(${lookAtX.toFixed(2)}, ${lookAtY.toFixed(2)}, ${lookAtZ.toFixed(2)});`);
+                    console.log('----');
+                }
+                
                 previousMousePosition = { x: event.clientX, y: event.clientY };
             }
         });
 
         this.renderer.domElement.addEventListener('mouseup', () => {
+            if (isDragging) {
+                // 在拖动结束时输出最终视角信息
+                let lookAtX = 0, lookAtY = 0, lookAtZ = 0;
+                
+                if (this.rods.length > 0) {
+                    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = -Infinity;
+                    this.rods.forEach(rod => {
+                        minX = Math.min(minX, rod.position.x);
+                        maxX = Math.max(maxX, rod.position.x);
+                        minZ = Math.min(minZ, rod.position.z);
+                        maxZ = Math.max(maxZ, rod.position.z);
+                        maxY = Math.max(maxY, rod.userData.length);
+                    });
+                    
+                    lookAtX = (minX + maxX) / 2;
+                    lookAtY = this.displayModeConfig.mode === 'sculpture' ? maxY / 2 : 0;
+                    lookAtZ = (minZ + maxZ) / 2;
+                }
+                
+                console.log('最终视角设置:');
+                console.log(`this.camera.position.set(${this.camera.position.x.toFixed(2)}, ${this.camera.position.y.toFixed(2)}, ${this.camera.position.z.toFixed(2)});`);
+                console.log(`this.camera.lookAt(${lookAtX.toFixed(2)}, ${lookAtY.toFixed(2)}, ${lookAtZ.toFixed(2)});`);
+                console.log('====================');
+            }
+            
             isDragging = false;
         });
     }
