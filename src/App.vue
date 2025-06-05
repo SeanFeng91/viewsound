@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import AudioPlayer from './components/AudioPlayer.vue'
 import VibrationControls from './components/VibrationControls.vue'
+import { DEFAULT_ROD_CONFIG } from './utils/config.js'
 
 // 组件引用
 const audioPlayer = ref(null)
@@ -19,10 +20,10 @@ const audioEnabled = ref(true)
 const isFullscreen = ref(false)
 const currentConfig = ref({
   // 基础杆件参数 (主要用于线性模式或作为阵列/雕塑模式的默认值)
-  rodCount: 10,
-  startLength: 20, // mm
-  lengthStep: 10,  // mm
-  diameter: 1,     // mm
+  rodCount: DEFAULT_ROD_CONFIG.count,
+  startLength: DEFAULT_ROD_CONFIG.startLength, // mm
+  lengthStep: DEFAULT_ROD_CONFIG.lengthStep,  // mm
+  diameter: DEFAULT_ROD_CONFIG.diameter,     // mm
   // 材料
   material: 'steel',
   // 激励
@@ -725,9 +726,10 @@ function resetArrayConfig() {
           </div>
 
           <!-- 图表可视化 -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <!-- 波形图 -->
-            <div class="bg-gray-800 border border-gray-700">
+          <div class="grid grid-cols-1 md:grid-cols-1 gap-3">
+            <!-- 波形图 --> 
+             <!-- 波形图杆件选择问题暂未解决，隐藏 -->
+            <!-- <div class="bg-gray-800 border border-gray-700">
               <div class="flex justify-between items-center p-2 border-b border-gray-700 h-12">
                 <h4 class="text-sm font-medium text-white">振动波形</h4>
                 <div class="flex items-center space-x-1">
@@ -747,7 +749,7 @@ function resetArrayConfig() {
               <div class="px-2 py-1 text-xs text-gray-400 border-t border-gray-700">
                 显示所选杆件的实时振动位移随时间变化
               </div>
-            </div>
+            </div> -->
 
             <!-- 频率图 -->
             <div class="bg-gray-800 border border-gray-700">

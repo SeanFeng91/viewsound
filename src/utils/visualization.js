@@ -124,7 +124,7 @@ class Visualization {
 
         // 添加网格和坐标轴
         g.append('g')
-            .attr('class', 'grid')
+            .attr('class', 'x-grid')
             .attr('transform', `translate(0,${innerHeight})`)
             .call(xAxis)
             .selectAll('line')
@@ -132,7 +132,7 @@ class Visualization {
             .style('stroke-dasharray', '2,2');
 
         g.append('g')
-            .attr('class', 'grid')
+            .attr('class', 'y-grid')
             .call(yAxis)
             .selectAll('line')
             .style('stroke', '#374151')
@@ -232,7 +232,7 @@ class Visualization {
 
         // 添加网格和坐标轴
         g.append('g')
-            .attr('class', 'grid')
+            .attr('class', 'x-grid')
             .attr('transform', `translate(0,${innerHeight})`)
             .call(xAxis)
             .selectAll('line')
@@ -240,7 +240,7 @@ class Visualization {
             .style('stroke-dasharray', '2,2');
 
         g.append('g')
-            .attr('class', 'grid')
+            .attr('class', 'y-grid')
             .call(yAxis)
             .selectAll('line')
             .style('stroke', '#374151')
@@ -317,7 +317,7 @@ class Visualization {
 
         // 添加网格和坐标轴
         g.append('g')
-            .attr('class', 'grid')
+            .attr('class', 'x-grid')
             .attr('transform', `translate(0,${innerHeight})`)
             .call(xAxis)
             .selectAll('line')
@@ -325,7 +325,7 @@ class Visualization {
             .style('stroke-dasharray', '2,2');
 
         g.append('g')
-            .attr('class', 'grid')
+            .attr('class', 'y-grid')
             .call(yAxis)
             .selectAll('line')
             .style('stroke', '#374151')
@@ -433,14 +433,33 @@ class Visualization {
         }
         
         if (amplitudeExtent[0] !== undefined && amplitudeExtent[1] !== undefined) {
-            const padding = Math.abs(amplitudeExtent[1] - amplitudeExtent[0]) * 0.1 || 0.001;
-            yScale.domain([amplitudeExtent[0] - padding, amplitudeExtent[1] + padding]);
+            const range = Math.abs(amplitudeExtent[1] - amplitudeExtent[0]);
+            const padding = Math.max(range * 0.1, 0.001); // 确保最小padding
+            
+            // 如果振幅范围太小，设置最小显示范围
+            const minDisplayRange = 0.002; // 2mm的最小显示范围
+            if (range < minDisplayRange) {
+                const center = (amplitudeExtent[0] + amplitudeExtent[1]) / 2;
+                yScale.domain([center - minDisplayRange/2, center + minDisplayRange/2]);
+            } else {
+                yScale.domain([amplitudeExtent[0] - padding, amplitudeExtent[1] + padding]);
+            }
         }
 
         // 更新坐标轴
-        g.select('.grid').transition().duration(100)
-            .call(d3.axisBottom(xScale).tickSize(-this.waveformChart.innerHeight));
-        g.selectAll('.grid').selectAll('line')
+        g.select('.x-grid').transition().duration(100)
+            .call(d3.axisBottom(xScale).tickSize(-this.waveformChart.innerHeight)
+                .tickFormat(d => `${d.toFixed(1)}s`));
+        
+        g.select('.y-grid').transition().duration(100)
+            .call(d3.axisLeft(yScale).tickSize(-this.waveformChart.innerWidth)
+                .tickFormat(d => `${(d * 1000).toFixed(1)}mm`));
+        
+        // 重新应用网格样式
+        g.selectAll('.x-grid').selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+        g.selectAll('.y-grid').selectAll('line')
             .style('stroke', '#374151')
             .style('stroke-dasharray', '2,2');
 
@@ -483,9 +502,15 @@ class Visualization {
         yScale.domain([0, Math.max(yExtent[1] * 1.1, 5)]);
 
         // 更新坐标轴
-        g.select('.grid').transition().duration(200)
+        g.select('.x-grid').transition().duration(200)
             .call(d3.axisBottom(xScale).tickSize(-this.frequencyChart.innerHeight));
-        g.selectAll('.grid').selectAll('line')
+        g.selectAll('.x-grid').selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+
+        g.select('.y-grid').transition().duration(200)
+            .call(d3.axisLeft(yScale).tickSize(-this.frequencyChart.innerWidth));
+        g.selectAll('.y-grid').selectAll('line')
             .style('stroke', '#374151')
             .style('stroke-dasharray', '2,2');
 
@@ -556,12 +581,32 @@ class Visualization {
         const yExtent = d3.extent(rodData, d => d.naturalFreq);
         
         xScale.domain([xExtent[0] - 5, xExtent[1] + 5]);
-        yScale.domain([0, Math.max(yExtent[1] * 1.1, excitationFreq * 1.5)]);
+        
+        // 改进Y轴范围计算
+        const minFreq = Math.min(yExtent[0], excitationFreq);
+        const maxFreq = Math.max(yExtent[1], excitationFreq);
+        const freqRange = maxFreq - minFreq;
+        const padding = Math.max(freqRange * 0.1, 50); // 至少50Hz的padding
+        
+        yScale.domain([
+            Math.max(0, minFreq - padding), 
+            maxFreq + padding
+        ]);
 
         // 更新坐标轴
-        g.select('.grid').transition().duration(200)
-            .call(d3.axisBottom(xScale).tickSize(-this.resonanceChart.innerHeight));
-        g.selectAll('.grid').selectAll('line')
+        g.select('.x-grid').transition().duration(200)
+            .call(d3.axisBottom(xScale).tickSize(-this.resonanceChart.innerHeight)
+                .tickFormat(d => `${d}mm`));
+        
+        g.select('.y-grid').transition().duration(200)
+            .call(d3.axisLeft(yScale).tickSize(-this.resonanceChart.innerWidth)
+                .tickFormat(d => `${d}Hz`));
+        
+        // 重新应用网格样式
+        g.selectAll('.x-grid').selectAll('line')
+            .style('stroke', '#374151')
+            .style('stroke-dasharray', '2,2');
+        g.selectAll('.y-grid').selectAll('line')
             .style('stroke', '#374151')
             .style('stroke-dasharray', '2,2');
 

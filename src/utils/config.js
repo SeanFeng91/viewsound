@@ -28,7 +28,7 @@ const CONFIG = {
         countRange: {
             min: 1,                     // 最少杆件数
             max: 50,                    // 最多杆件数
-            default: 5                  // 默认杆件数
+            default: 20                  // 默认杆件数
         }
     },
 
@@ -172,4 +172,24 @@ const TEXTS = {
 // 导出配置对象
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { CONFIG, COLORS, TEXTS };
-} 
+}
+
+/**
+ * 全局默认配置
+ * 为了确保参数在整个应用中的一致性
+ */
+
+// 基础杆件默认配置
+export const DEFAULT_ROD_CONFIG = {
+    count: 20,
+    startLength: 20, // mm
+    lengthStep: 10,  // mm
+    diameter: 1.8,   // mm
+    spacing: 15      // 杆件间距 (mm)
+};
+
+// 其他全局配置可以在这里添加
+export const GLOBAL_CONFIG = {
+    // 可以添加其他全局配置参数
+    version: '1.0.0'
+}; 

@@ -8,6 +8,7 @@ import { VibrationCalculator } from './vibration-calc.js';
 import { getArrayHeightFunction } from './math-functions.js'; // 导入高度函数获取器
 import { SculptureManager, DEFAULT_SCULPTURE_CONFIG } from './sculpture-manager.js'; // 导入雕塑管理器和默认配置
 import { ArrayManager, DEFAULT_ARRAY_CONFIG } from './array-manager.js'; // 导入阵列管理器和默认配置
+import { DEFAULT_ROD_CONFIG } from './config.js'; // 导入默认杆件配置
 
 // 创建模块实例
 const materialProperties = new MaterialProperties();
@@ -29,13 +30,7 @@ class RodManager {
         this.selectedRodIndex = 4; // 默认选择第5根杆件
         
         // 杆件配置
-        this.baseRodConfig = {
-            count: 10,
-            startLength: 20, // mm
-            lengthStep: 10,  // mm
-            diameter: 2,     // mm
-            spacing: 15      // 杆件间距 (mm)
-        };
+        this.baseRodConfig = { ...DEFAULT_ROD_CONFIG };
         
         // 显示模式配置
         this.displayModeConfig = {
@@ -156,7 +151,7 @@ class RodManager {
      */
     createEnvironment() {
         // 创建地面
-        const groundSize = 1; // 地面大小 (米)
+        const groundSize = 1.5; // 地面大小 (米)
         const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
         const groundMaterial = new THREE.MeshLambertMaterial({ 
             color: 0x666666, // 浅灰色地面
@@ -366,7 +361,7 @@ class RodManager {
                 camY = 0.5;
                 camZ = 0.8;
             } else if (sculptureType === 'radial') {
-                // 螺旋雕塑需要倾斜视角
+                // 放射球形雕塑需要倾斜视角
                 camX = 0;
                 camY = 0.8;
                 camZ = 0.8;
@@ -374,7 +369,7 @@ class RodManager {
                 // 螺旋雕塑需要倾斜视角
                 camX = 0;
                 camY = 0.8;
-                camZ = 0.8;
+                camZ = 0.5;
             } else if (sculptureType === 'wing') {
                 // 翼状雕塑需要侧面视角
                 camX = 0.5;

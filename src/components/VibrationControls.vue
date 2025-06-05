@@ -532,6 +532,7 @@
 import { ref, computed, watch } from 'vue'
 import { SculptureManager, DEFAULT_SCULPTURE_CONFIG } from '../utils/sculpture-manager.js'
 import { ArrayManager, DEFAULT_ARRAY_CONFIG } from '../utils/array-manager.js'
+import { DEFAULT_ROD_CONFIG } from '../utils/config.js'
 
 // Props 和 Emits
 const emit = defineEmits([
@@ -547,13 +548,7 @@ const emit = defineEmits([
 ])
 
 // 响应式数据
-const rodConfig = ref({
-  count: 20,
-  startLength: 20,
-  lengthStep: 10,
-  diameter: 1,
-  spacing: 10
-})
+const rodConfig = ref({ ...DEFAULT_ROD_CONFIG })
 
 const materialConfig = ref({
   type: 'steel',
@@ -564,7 +559,7 @@ const materialConfig = ref({
 const excitationConfig = ref({
   type: 'sine',
   frequency: 100,
-  amplitude: 1,
+  amplitude: 0.6,
   damping: 0.01,
   timeScale: 1.0
 })
