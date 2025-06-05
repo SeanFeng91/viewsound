@@ -188,7 +188,7 @@ function handleRodConfigUpdate(config) {
   currentConfig.value = { ...currentConfig.value, ...config }
   if (rodManager) {
     // 传递基础杆件参数，RodManager内部会根据显示模式决定如何使用它们
-    rodManager.setBaseRodParams(config)
+    rodManager.setBaseRodParams(config) 
     // 当基础杆件参数（如直径）更新后，需要重新生成所有杆件以反映变化
     rodManager.createAllRods(); 
   }

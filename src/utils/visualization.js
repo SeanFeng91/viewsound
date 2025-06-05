@@ -265,7 +265,7 @@ class Visualization {
             .style('fill', '#d1d5db')
             .style('font-size', '11px')
             .text('响应强度');
-
+            
         // 保存图表引用
         this.frequencyChart = {
             svg, g, xScale, yScale, innerWidth, innerHeight,
@@ -373,12 +373,12 @@ class Visualization {
         }
 
         const actualRodIndex = rodIndex !== null ? rodIndex : this.currentSelectedRod;
-
+        
         // 存储数据 - 累积添加到现有数据中
         if (!this.waveformData.has(actualRodIndex)) {
             this.waveformData.set(actualRodIndex, []);
-        }
-        
+            }
+            
         const rodData = this.waveformData.get(actualRodIndex);
         waveformData.forEach(point => {
             rodData.push({
@@ -386,12 +386,12 @@ class Visualization {
                 amplitude: point.amplitude
             });
         });
-        
+
         // 限制数据点数量
         if (rodData.length > this.maxDataPoints) {
             rodData.splice(0, rodData.length - this.maxDataPoints);
-        }
-
+            }
+            
         // 过滤时间窗口内的数据（最近10秒）
         const currentTime = rodData.length > 0 ? rodData[rodData.length - 1].time : 0;
         const windowStart = Math.max(0, currentTime - this.timeWindow);
@@ -458,7 +458,7 @@ class Visualization {
             .duration(100)
             .attr('d', area);
     }
-
+    
     /**
      * 更新频率响应图
      */

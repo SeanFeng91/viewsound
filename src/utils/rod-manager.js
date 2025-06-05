@@ -39,22 +39,6 @@ class RodManager {
         // 显示模式配置
         this.displayModeConfig = {
             mode: 'linear',
-            spacing: 20      // 阵列模式间距 (mm)
-        };
-        
-        // 激励参数
-        this.excitationType = 'sine';
-        this.excitationFreq = 100;
-        this.excitationAmp = 1;
-        this.damping = 0.01;
-        this.timeScale = 1.0;
-        
-        // 材料
-        this.currentMaterial = 'steel';
-        
-        // 新增：显示模式配置
-        this.displayModeConfig = {
-            mode: 'linear',
             // 阵列参数
             gridX: 10,
             gridY: 10,
@@ -71,6 +55,16 @@ class RodManager {
             spiralTurns: 2,                    // 螺旋圈数
             spacing: 20                        // 阵列模式间距 (mm)
         };
+        
+        // 激励参数
+        this.excitationType = 'sine';
+        this.excitationFreq = 100;
+        this.excitationAmp = 1;
+        this.damping = 0.01;
+        this.timeScale = 1.0;
+        
+        // 材料
+        this.currentMaterial = 'steel';
     }
 
     /**
@@ -354,6 +348,11 @@ class RodManager {
             camX = centerX + maxExtent * 0.8;
             camY = Math.max(maxY * 1.2, 0.8) + maxExtent * 0.3;
             camZ = centerZ + maxExtent * 1.2;
+        } else if (this.displayModeConfig.mode === 'sculpture') {
+            // 雕塑模式：相机视角略高一些，以便观察整个雕塑形状
+            camX = centerX + maxExtent * 0.7;
+            camY = Math.max(maxY * 1.5, 1.0) + maxExtent * 0.4;
+            camZ = centerZ + maxExtent * 1.3;
         } else {
             // 线性模式：相机位置适中
             camX = centerX + maxExtent * 0.6;
@@ -382,7 +381,7 @@ class RodManager {
         
         // 观察点设置：注视杆件区域的中心偏上位置
         const lookAtY = Math.max(maxY / 3, 0.2);
-        this.camera.lookAt(0.04, 0.0, 0.0);
+        this.camera.lookAt(centerX, lookAtY, centerZ); // 修正：看向杆件中心
 
         console.log(`[RodManager.updateCameraView] 相机位置: (${camX.toFixed(2)}, ${camY.toFixed(2)}, ${camZ.toFixed(2)})`);
         console.log(`[RodManager.updateCameraView] 观察点: (${centerX.toFixed(2)}, ${lookAtY.toFixed(2)}, ${centerZ.toFixed(2)})`);
@@ -621,6 +620,7 @@ class RodManager {
      * @param {Object} config - 显示模式配置
      */
     setDisplayMode(config) {
+        console.log('[RodManager.setDisplayMode] 收到配置:', JSON.stringify(config));
         this.displayModeConfig = { ...this.displayModeConfig, ...config };
         console.log('[RodManager] 显示模式配置已更新:', this.displayModeConfig);
     }
@@ -735,14 +735,21 @@ class RodManager {
         // 创建雕塑管理器实例
         const sculptureManager = new SculptureManager();
         
+        // 增加调试信息查看原始displayModeConfig
+        console.log('[RodManager.createSculptureRods] 原始displayModeConfig:', 
+                    JSON.stringify({
+                        type: this.displayModeConfig.type,
+                        sculptureType: this.displayModeConfig.sculptureType
+                    }));
+        
         // 设置雕塑配置 - 使用displayModeConfig的参数
         const sculptureConfig = {
-            type: this.displayModeConfig.sculptureType || 'radial',
-            rodCount: this.displayModeConfig.sculptureRodCount || 50,
-            baseLength: this.displayModeConfig.sculptureBaseLength || 20, // 保持mm单位
-            lengthVariation: this.displayModeConfig.sculptureLengthVariation || 30, // 保持mm单位
-            radius: (this.displayModeConfig.sculptureScale || 1.0) * 0.15, // 雕塑半径 (m)
-            height: (this.displayModeConfig.sculptureScale || 1.0) * 0.1,  // 高度变化 (m)
+            type: this.displayModeConfig.type || this.displayModeConfig.sculptureType || 'radial',
+            rodCount: this.displayModeConfig.rodCount || this.displayModeConfig.sculptureRodCount || 50,
+            baseLength: this.displayModeConfig.baseLength || this.displayModeConfig.sculptureBaseLength || 20, // 保持mm单位
+            lengthVariation: this.displayModeConfig.lengthVariation || this.displayModeConfig.sculptureLengthVariation || 30, // 保持mm单位
+            radius: (this.displayModeConfig.scale || this.displayModeConfig.sculptureScale || 1.0) * 0.15, // 雕塑半径 (m)
+            height: (this.displayModeConfig.scale || this.displayModeConfig.sculptureScale || 1.0) * 0.1,  // 高度变化 (m)
             spiralTurns: this.displayModeConfig.spiralTurns || 2
         };
         
@@ -875,8 +882,28 @@ class RodManager {
                 spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
 
                 this.camera.position.setFromSpherical(spherical);
-                this.camera.lookAt(0, 0, 0);
-
+                
+                // 计算观察点 - 考虑当前显示模式
+                let lookAtX = 0, lookAtY = 0, lookAtZ = 0;
+                
+                if (this.rods.length > 0) {
+                    // 计算杆件中心
+                    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = -Infinity;
+                    this.rods.forEach(rod => {
+                        minX = Math.min(minX, rod.position.x);
+                        maxX = Math.max(maxX, rod.position.x);
+                        minZ = Math.min(minZ, rod.position.z);
+                        maxZ = Math.max(maxZ, rod.position.z);
+                        maxY = Math.max(maxY, rod.userData.length);
+                    });
+                    
+                    lookAtX = (minX + maxX) / 2;
+                    lookAtY = this.displayModeConfig.mode === 'sculpture' ? maxY / 2 : 0; // 雕塑模式看中心点
+                    lookAtZ = (minZ + maxZ) / 2;
+                }
+                
+                this.camera.lookAt(lookAtX, lookAtY, lookAtZ);
+                
                 previousMousePosition = { x: event.clientX, y: event.clientY };
             }
         });
