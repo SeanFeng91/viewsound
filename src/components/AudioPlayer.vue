@@ -917,7 +917,9 @@ async function loadDemoAudio() {
   try {
     console.log('开始加载示例音频...')
     const demoFilename = 'Abel Korzeniowski - Dance For Me Wallis.mp3'
-    const demoUrl = './Abel Korzeniowski - Dance For Me Wallis.mp3'
+    // 确保正确处理URL中的空格和特殊字符
+    const demoUrl = './Dance_For_Me_Wallis.mp3'
+    console.log('尝试加载音频URL:', demoUrl)
     
     // 创建文件信息
     selectedFile.value = {
