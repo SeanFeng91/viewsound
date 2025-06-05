@@ -917,7 +917,7 @@ async function loadDemoAudio() {
   try {
     console.log('开始加载示例音频...')
     const demoFilename = 'Abel Korzeniowski - Dance For Me Wallis.mp3'
-    // 确保正确处理URL中的空格和特殊字符
+    // 使用无空格的文件名，避免URL编码问题
     const demoUrl = './Dance_For_Me_Wallis.mp3'
     console.log('尝试加载音频URL:', demoUrl)
     
@@ -937,13 +937,31 @@ async function loadDemoAudio() {
     console.log(`📁 加载示例音频: ${demoFilename}`)
     
     // 获取音频数据
-    const response = await fetch(demoUrl)
-    if (!response.ok) {
-      throw new Error('示例音频加载失败，请检查网络连接')
+    try {
+      const response = await fetch(demoUrl)
+      if (!response.ok) {
+        console.error('HTTP错误:', response.status, response.statusText)
+        throw new Error(`HTTP错误: ${response.status} ${response.statusText}`)
+      }
+      
+      const arrayBuffer = await response.arrayBuffer()
+      console.log('音频数据获取成功，大小:', arrayBuffer.byteLength, '字节')
+      
+      try {
+        audioBuffer.value = await audioContext.decodeAudioData(arrayBuffer)
+        console.log('音频解码成功:', 
+          '时长=', audioBuffer.value.duration, '秒', 
+          '采样率=', audioBuffer.value.sampleRate, 'Hz',
+          '声道数=', audioBuffer.value.numberOfChannels
+        )
+      } catch (decodeError) {
+        console.error('音频解码失败:', decodeError.message)
+        throw new Error(`音频解码失败: ${decodeError.message}`)
+      }
+    } catch (fetchError) {
+      console.error('音频获取失败:', fetchError.message)
+      throw new Error(`音频获取失败: ${fetchError.message}`)
     }
-    
-    const arrayBuffer = await response.arrayBuffer()
-    audioBuffer.value = await audioContext.decodeAudioData(arrayBuffer)
     
     // 更新音频信息
     audioInfo.value = {
@@ -963,7 +981,7 @@ async function loadDemoAudio() {
     
   } catch (error) {
     console.error('示例音频加载失败:', error)
-    alert('示例音频加载失败: ' + error.message)
+    alert(`示例音频加载失败: ${error.message}\n请确保服务器上有名为"Dance_For_Me_Wallis.mp3"的文件`)
   } finally {
     isProcessing.value = false
     isDemoLoading.value = false
