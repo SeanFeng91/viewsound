@@ -77,12 +77,12 @@
              :style="{ left: (hoverTime / duration) * waveformCanvas.width + 'px' }" >
             <span class="absolute top-0 -translate-x-1/2 bg-gray-800 text-yellow-400 text-2xs px-1 rounded-b-sm">{{ formatTime(hoverTime) }}</span>
         </div>
-        <div 
+        <!-- <div 
           v-if="isPlaying && duration > 0 && waveformCanvas"
           class="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none transition-transform duration-100 ease-linear"
           :style="{ transform: 'translateX(' + (currentTime / duration * waveformCanvas.width) + 'px)' }"
         >
-      </div>
+      </div> -->
       </div>
     </div>
     
