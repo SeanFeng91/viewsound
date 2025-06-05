@@ -532,7 +532,7 @@
 import { ref, computed, watch } from 'vue'
 import { SculptureManager, DEFAULT_SCULPTURE_CONFIG } from '../utils/sculpture-manager.js'
 import { ArrayManager, DEFAULT_ARRAY_CONFIG } from '../utils/array-manager.js'
-import { DEFAULT_ROD_CONFIG } from '../utils/config.js'
+import { DEFAULT_ROD_CONFIG, DEFAULT_EXCITATION_CONFIG } from '../utils/config.js'
 
 // Props 和 Emits
 const emit = defineEmits([
@@ -556,13 +556,7 @@ const materialConfig = ref({
   density: 7850
 })
 
-const excitationConfig = ref({
-  type: 'sine',
-  frequency: 100,
-  amplitude: 0.6,
-  damping: 0.01,
-  timeScale: 1.0
-})
+const excitationConfig = ref({ ...DEFAULT_EXCITATION_CONFIG, amplitude: 0.6 })
 
 // 新增：显示模式配置 - 使用DEFAULT_SCULPTURE_CONFIG和DEFAULT_ARRAY_CONFIG
 const displayModeConfig = ref({

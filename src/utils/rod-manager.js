@@ -8,7 +8,7 @@ import { VibrationCalculator } from './vibration-calc.js';
 import { getArrayHeightFunction } from './math-functions.js'; // 导入高度函数获取器
 import { SculptureManager, DEFAULT_SCULPTURE_CONFIG } from './sculpture-manager.js'; // 导入雕塑管理器和默认配置
 import { ArrayManager, DEFAULT_ARRAY_CONFIG } from './array-manager.js'; // 导入阵列管理器和默认配置
-import { DEFAULT_ROD_CONFIG } from './config.js'; // 导入默认杆件配置
+import { DEFAULT_ROD_CONFIG, DEFAULT_EXCITATION_CONFIG } from './config.js'; // 导入默认杆件配置
 
 // 创建模块实例
 const materialProperties = new MaterialProperties();
@@ -54,11 +54,11 @@ class RodManager {
         };
         
         // 激励参数
-        this.excitationType = 'sine';
-        this.excitationFreq = 100;
-        this.excitationAmp = 1;
-        this.damping = 0.01;
-        this.timeScale = 1.0;
+        this.excitationType = DEFAULT_EXCITATION_CONFIG.type;
+        this.excitationFreq = DEFAULT_EXCITATION_CONFIG.frequency;
+        this.excitationAmp = DEFAULT_EXCITATION_CONFIG.amplitude;
+        this.damping = DEFAULT_EXCITATION_CONFIG.damping;
+        this.timeScale = DEFAULT_EXCITATION_CONFIG.timeScale;
         
         // 材料
         this.currentMaterial = 'steel';

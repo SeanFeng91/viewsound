@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import AudioPlayer from './components/AudioPlayer.vue'
 import VibrationControls from './components/VibrationControls.vue'
-import { DEFAULT_ROD_CONFIG } from './utils/config.js'
+import { DEFAULT_ROD_CONFIG, DEFAULT_EXCITATION_CONFIG } from './utils/config.js'
 
 // 组件引用
 const audioPlayer = ref(null)
@@ -27,11 +27,11 @@ const currentConfig = ref({
   // 材料
   material: 'steel',
   // 激励
-  excitationType: 'sine',
-  frequency: 100,
+  excitationType: DEFAULT_EXCITATION_CONFIG.type,
+  frequency: DEFAULT_EXCITATION_CONFIG.frequency,
   amplitude: 1,
-  damping: 0.01,
-  timeScale: 1.0,
+  damping: DEFAULT_EXCITATION_CONFIG.damping,
+  timeScale: DEFAULT_EXCITATION_CONFIG.timeScale,
   // 新增：显示模式特定配置
   displayMode: 'linear',
   displayParams: {} // 用于存储特定模式的参数，如 gridX, gridY, heightFunction等

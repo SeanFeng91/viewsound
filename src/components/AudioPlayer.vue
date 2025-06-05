@@ -124,9 +124,25 @@
     </div>
     
     <div v-if="!audioBuffer && !isProcessing" class="p-2.5 bg-gray-700/50 border border-gray-600/30 ">
-      <p class="text-xs text-gray-400">
-        <span class="font-semibold">💡 提示:</span> 上传音频文件后将自动分析。播放控制请使用主控制面板的 "开始/暂停" 按钮。
-      </p>
+      <div class="flex justify-between items-center">
+        <p class="text-xs text-gray-400">
+          <span class="font-semibold">💡 提示:</span> 上传音频文件后将自动分析。
+        </p>
+        <button 
+          @click="loadDemoAudio"
+          class="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+          :disabled="isDemoLoading"
+        >
+          <span v-if="isDemoLoading" class="flex items-center">
+            <svg class="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            加载中...
+          </span>
+          <span v-else>加载示例音频</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -153,6 +169,7 @@ const isAudioEnabled = ref(true)
 const isExcitationMode = ref(false)
 const currentAnalysis = ref(null)
 const hoverTime = ref(null)
+const isDemoLoading = ref(false)
 
 // Emit definitions
 const emit = defineEmits(['frequency-change', 'audio-processed-successfully', 'audio-playback-ended']);
@@ -887,6 +904,67 @@ function seekOnTimelineClick(event) {
   } else {
     // If paused, update the static waveform to the new seek position
     drawWaveform(); 
+  }
+}
+
+// 加载示例音频
+async function loadDemoAudio() {
+  if (isProcessing.value || isDemoLoading.value) return
+  
+  isDemoLoading.value = true
+  isProcessing.value = true
+  
+  try {
+    console.log('开始加载示例音频...')
+    const demoFilename = 'Abel Korzeniowski - Dance For Me Wallis.mp3'
+    const demoUrl = './Abel Korzeniowski - Dance For Me Wallis.mp3'
+    
+    // 创建文件信息
+    selectedFile.value = {
+      name: demoFilename,
+      size: 0,
+      type: 'audio/mpeg'
+    }
+    
+    audioInfo.value = {
+      filename: demoFilename,
+      size: 'Unknown',
+      type: 'audio/mpeg'
+    }
+    
+    console.log(`📁 加载示例音频: ${demoFilename}`)
+    
+    // 获取音频数据
+    const response = await fetch(demoUrl)
+    if (!response.ok) {
+      throw new Error('示例音频加载失败，请检查网络连接')
+    }
+    
+    const arrayBuffer = await response.arrayBuffer()
+    audioBuffer.value = await audioContext.decodeAudioData(arrayBuffer)
+    
+    // 更新音频信息
+    audioInfo.value = {
+      ...audioInfo.value,
+      duration: audioBuffer.value.duration,
+      sampleRate: audioBuffer.value.sampleRate,
+      channels: audioBuffer.value.numberOfChannels
+    }
+    
+    duration.value = audioBuffer.value.duration
+    
+    // 绘制完整波形
+    drawWaveform()
+    
+    console.log('示例音频处理成功')
+    emit('audio-processed-successfully') // 通知父组件音频准备完成
+    
+  } catch (error) {
+    console.error('示例音频加载失败:', error)
+    alert('示例音频加载失败: ' + error.message)
+  } finally {
+    isProcessing.value = false
+    isDemoLoading.value = false
   }
 }
 

@@ -36,7 +36,7 @@ const CONFIG = {
     excitation: {
         frequencyRange: {
             min: 20,                    // 最小频率 20Hz
-            max: 4000,                  // 最大频率 2000Hz
+            max: 4000,                  // 最大频率 4000Hz
             default: 100                // 默认频率 100Hz
         },
         amplitudeRange: {
@@ -47,7 +47,7 @@ const CONFIG = {
         dampingRange: {
             min: 0.001,                 // 最小阻尼比
             max: 0.1,                   // 最大阻尼比
-            default: 0.01               // 默认阻尼比
+            default: 0.05               // 默认阻尼比
         }
     },
 
@@ -192,4 +192,13 @@ export const DEFAULT_ROD_CONFIG = {
 export const GLOBAL_CONFIG = {
     // 可以添加其他全局配置参数
     version: '1.0.0'
+};
+
+// 默认激励配置
+export const DEFAULT_EXCITATION_CONFIG = {
+    type: 'sine',
+    frequency: CONFIG.excitation.frequencyRange.default,
+    amplitude: CONFIG.excitation.amplitudeRange.default,
+    damping: CONFIG.excitation.dampingRange.default,
+    timeScale: 1.0
 }; 
