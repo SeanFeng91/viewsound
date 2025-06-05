@@ -148,7 +148,7 @@ const COLORS = {
 // 国际化文本
 const TEXTS = {
     zh: {
-        title: '多杆件振动模拟系统',
+        title: 'Digital Art:音乐可视化——多杆件振动模拟',
         rodConfig: '杆件配置',
         materialProps: '材料特性',
         excitationParams: '激励参数',
