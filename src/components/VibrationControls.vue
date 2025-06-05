@@ -300,7 +300,7 @@
             </div>
             <input 
               v-model.number="rodConfig.diameter"
-              type="range" min="1" max="20" step="0.1"
+              type="range" min="0.5" max="5" step="0.1"
               class="w-full h-1 bg-gray-500 appearance-none cursor-pointer accent-blue-500"
               @input="updateRodConfig" 
             />
@@ -530,7 +530,8 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { DEFAULT_SCULPTURE_CONFIG } from '../utils/sculpture-manager.js'
+import { SculptureManager, DEFAULT_SCULPTURE_CONFIG } from '../utils/sculpture-manager.js'
+import { ArrayManager, DEFAULT_ARRAY_CONFIG } from '../utils/array-manager.js'
 
 // Props 和 Emits
 const emit = defineEmits([
@@ -550,7 +551,7 @@ const rodConfig = ref({
   count: 20,
   startLength: 20,
   lengthStep: 10,
-  diameter: 2,
+  diameter: 1,
   spacing: 10
 })
 
@@ -568,17 +569,17 @@ const excitationConfig = ref({
   timeScale: 1.0
 })
 
-// 新增：显示模式配置 - 使用DEFAULT_SCULPTURE_CONFIG
+// 新增：显示模式配置 - 使用DEFAULT_SCULPTURE_CONFIG和DEFAULT_ARRAY_CONFIG
 const displayModeConfig = ref({
   mode: 'linear',
-  // 阵列参数
-  arrayGridX: 10,
-  arrayGridY: 10,
-  arrayHeightFunction: 'sine',
-  arrayBaseHeight: 20,
-  arrayAmplitude: 50,
-  arrayScaleFactor: 1.0,
-  arraySpacing: 20,
+  // 阵列参数 - 从默认配置中获取
+  arrayGridX: DEFAULT_ARRAY_CONFIG.gridX,
+  arrayGridY: DEFAULT_ARRAY_CONFIG.gridY,
+  arrayHeightFunction: DEFAULT_ARRAY_CONFIG.heightFunction,
+  arrayBaseHeight: DEFAULT_ARRAY_CONFIG.baseHeight,
+  arrayAmplitude: DEFAULT_ARRAY_CONFIG.amplitude,
+  arrayScaleFactor: DEFAULT_ARRAY_CONFIG.scaleFactor,
+  arraySpacing: DEFAULT_ARRAY_CONFIG.spacing,
   // 雕塑参数 - 从默认配置中获取
   sculptureType: DEFAULT_SCULPTURE_CONFIG.type,
   sculptureDensity: 'medium',
@@ -756,6 +757,23 @@ function updateSculptureConfig(config) {
   }
 }
 
+// 更新阵列配置方法 - 接收外部更新
+function updateArrayConfig(config) {
+  if (config) {
+    // 只更新阵列相关参数，不影响其他配置
+    displayModeConfig.value.arrayGridX = config.gridX || displayModeConfig.value.arrayGridX;
+    displayModeConfig.value.arrayGridY = config.gridY || displayModeConfig.value.arrayGridY;
+    displayModeConfig.value.arrayHeightFunction = config.heightFunction || displayModeConfig.value.arrayHeightFunction;
+    displayModeConfig.value.arrayBaseHeight = config.baseHeight || displayModeConfig.value.arrayBaseHeight;
+    displayModeConfig.value.arrayAmplitude = config.amplitude || displayModeConfig.value.arrayAmplitude;
+    displayModeConfig.value.arrayScaleFactor = config.scaleFactor || displayModeConfig.value.arrayScaleFactor;
+    displayModeConfig.value.arraySpacing = config.spacing || displayModeConfig.value.arraySpacing;
+    
+    // 更新显示模式配置
+    updateDisplayModeConfig();
+  }
+}
+
 defineExpose({
   updateRodStatus,
   setRunningState,
@@ -763,7 +781,8 @@ defineExpose({
   updateExcitationTypeExternally,
   getCurrentRodConfig,
   getCurrentDisplayModeConfig,
-  updateSculptureConfig
+  updateSculptureConfig,
+  updateArrayConfig
 })
 </script>
 

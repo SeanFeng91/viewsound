@@ -7,6 +7,7 @@ import { MaterialProperties } from './materials.js';
 import { VibrationCalculator } from './vibration-calc.js';
 import { getArrayHeightFunction } from './math-functions.js'; // 导入高度函数获取器
 import { SculptureManager, DEFAULT_SCULPTURE_CONFIG } from './sculpture-manager.js'; // 导入雕塑管理器和默认配置
+import { ArrayManager, DEFAULT_ARRAY_CONFIG } from './array-manager.js'; // 导入阵列管理器和默认配置
 
 // 创建模块实例
 const materialProperties = new MaterialProperties();
@@ -39,21 +40,21 @@ class RodManager {
         // 显示模式配置
         this.displayModeConfig = {
             mode: 'linear',
-            // 阵列参数
-            gridX: 10,
-            gridY: 10,
-            heightFunction: 'sine',
-            baseHeight: 20,
-            amplitude: 50,
-            scaleFactor: 1.0,
+            // 阵列参数 - 从默认配置中获取
+            gridX: DEFAULT_ARRAY_CONFIG.gridX,
+            gridY: DEFAULT_ARRAY_CONFIG.gridY,
+            heightFunction: DEFAULT_ARRAY_CONFIG.heightFunction,
+            baseHeight: DEFAULT_ARRAY_CONFIG.baseHeight,
+            amplitude: DEFAULT_ARRAY_CONFIG.amplitude,
+            scaleFactor: DEFAULT_ARRAY_CONFIG.scaleFactor,
+            spacing: DEFAULT_ARRAY_CONFIG.spacing,
             // 雕塑参数 - 从默认配置中获取
             sculptureType: DEFAULT_SCULPTURE_CONFIG.type,           
             sculptureRodCount: DEFAULT_SCULPTURE_CONFIG.rodCount,             
             sculptureBaseLength: DEFAULT_SCULPTURE_CONFIG.baseLength,           
             sculptureLengthVariation: DEFAULT_SCULPTURE_CONFIG.lengthVariation,      
             sculptureScale: 1.0,               
-            spiralTurns: DEFAULT_SCULPTURE_CONFIG.spiralTurns,                    
-            spacing: 20                        // 阵列模式间距 (mm)
+            spiralTurns: DEFAULT_SCULPTURE_CONFIG.spiralTurns
         };
         
         // 激励参数
@@ -1104,6 +1105,40 @@ class RodManager {
      */
     getAvailableSculptureTypes() {
         return SculptureManager.getAvailableTypes();
+    }
+
+    /**
+     * 重置阵列配置为默认值
+     */
+    resetArrayConfig() {
+        // 从ArrayManager获取默认配置
+        const defaultConfig = ArrayManager.getDefaultConfig();
+        
+        // 更新displayModeConfig中的阵列相关参数
+        this.displayModeConfig.gridX = defaultConfig.gridX;
+        this.displayModeConfig.gridY = defaultConfig.gridY;
+        this.displayModeConfig.heightFunction = defaultConfig.heightFunction;
+        this.displayModeConfig.baseHeight = defaultConfig.baseHeight;
+        this.displayModeConfig.amplitude = defaultConfig.amplitude;
+        this.displayModeConfig.scaleFactor = defaultConfig.scaleFactor;
+        this.displayModeConfig.spacing = defaultConfig.spacing;
+        
+        console.log('[RodManager] 阵列配置已重置为默认值:', this.displayModeConfig);
+        
+        if (this.displayModeConfig.mode === 'array') {
+            // 如果当前是阵列模式，重新创建杆件
+            this.createAllRods();
+        }
+        
+        return this.displayModeConfig;
+    }
+
+    /**
+     * 获取可用的高度函数列表
+     * @returns {Array} 高度函数列表
+     */
+    getAvailableHeightFunctions() {
+        return ArrayManager.getAvailableHeightFunctions();
     }
 }
 

@@ -583,6 +583,19 @@ function resetSculptureConfig() {
     }
   }
 }
+
+// 新增：重置阵列配置
+function resetArrayConfig() {
+  if (rodManager) {
+    const updatedConfig = rodManager.resetArrayConfig();
+    console.log('App.vue: 阵列配置已重置');
+    
+    // 如果VibrationControls组件存在，更新其UI
+    if (vibrationControls.value) {
+      vibrationControls.value.updateArrayConfig(updatedConfig);
+    }
+  }
+}
 </script>
 
 <template>
