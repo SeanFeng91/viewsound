@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>声谱洞察镜</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overscroll-behavior-y: contain;
+            -webkit-tap-highlight-color: transparent;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .canvas-container {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        #waveformCanvas, #spectrogramCanvas {
+            width: 100%;
+            display: block;
+        }
+        #waveformCanvas { height: 120px; }
+        #spectrogramCanvas { height: 240px; border-top: 1px solid rgba(255,255,255,0.1); }
+
+        .btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:hover { transform: translateY(-1px); }
+        .btn:active { transform: translateY(0) scale(0.98); }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .btn-secondary:hover {
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+        
+        .btn-mic {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+        .btn-mic:hover {
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
+        }
+        .btn-mic.active {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            animation: pulse 2s infinite;
+        }
+        
+        .btn-upload {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+        .btn-upload:hover {
+            box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .progress-bar-container {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+            transition: width 0.1s ease-out;
+            border-radius: 8px;
+        }
+
+        .status-info { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white; }
+        .status-error { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+
+        input:focus, button:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-gray-800 flex flex-col items-center min-h-screen selection:bg-blue-200 selection:text-blue-900">
+
+    <div class="w-full max-w-lg mx-auto p-3 sm:p-1 flex flex-col space-y-1">
+        <header class="pt-2 pb-1 text-center fade-in">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white drop-shadow-lg">
+                🎵 声谱洞察镜
+            </h1>
+            <p class="text-white/80 text-md mt-1">
+                通过选择不同的声源，绘制波形图和声谱图。
+            </p>
+            <p class="text-white/80 text-xs mt-1 text-left">
+            · 波形图描绘了声音振幅随时间的变化。波峰越高，代表声音在那一刻越响亮。<br>
+            · 多彩的声谱图纵轴是频率（音高），下方是低沉的低音，上方是清亮的高音。色彩是强度（音量）。从冷色调（代表弱）到暖色调（代表强）的渐变来表示。颜色越暖、越亮，说明那个特定频率的声音在那个时刻能量越强。<br>
+            · 点击“麦克风”按钮，可以生成属于你自己的声谱图。
+            </p>
+            
+        </header>
+
+        <!-- Record Section -->
+        <section class="glass-card p-1 rounded-xl fade-in">
+            <h2 class="text-base font-bold text-gray-700 mb-2">📱 录制与上传</h2>
+            <div class="grid grid-cols-2 gap-2">
+                <button id="micButton" class="btn btn-mic flex items-center justify-center py-2.5 px-3 rounded-lg text-white text-sm font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 10-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
+                    </svg>
+                    <span id="micButtonText">麦克风</span>
+                </button>
+                <label for="mp3Uploader" class="btn btn-upload flex items-center justify-center py-2.5 px-3 rounded-lg text-white text-sm font-medium cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.414l-1.293 1.293a1 1 0 01-1.414-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L13 9.414V13h-1.5z" />
+                    </svg>
+                    <span>上传MP3</span>
+                </label>
+                <input type="file" id="mp3Uploader" accept=".mp3,.wav,.m4a" class="hidden">
+            </div>
+        </section>
+
+        <!-- Presets Section -->
+        <section class="glass-card p-1 rounded-xl fade-in">
+            <h2 class="text-base font-bold text-gray-700 mb-2">🎼 预设声音</h2>
+            <div class="grid grid-cols-2 gap-2">
+                <button id="playBirdButton" class="btn btn-secondary py-2.5 px-3 rounded-lg text-white text-sm font-medium">🐦 鸟鸣</button>
+                <button id="playDrumButton" class="btn btn-secondary py-2.5 px-3 rounded-lg text-white text-sm font-medium">🥁 鼓点</button>
+                <button id="playHornButton" class="btn btn-secondary py-2.5 px-3 rounded-lg text-white text-sm font-medium">📯 号角</button>
+                <button id="playVoiceButton" class="btn btn-secondary py-2.5 px-3 rounded-lg text-white text-sm font-medium">🎤 人声</button>
+            </div>
+        </section>
+        
+        <!-- Visualizations -->
+        <section class="canvas-container fade-in">
+            <canvas id="waveformCanvas"></canvas>
+            <canvas id="spectrogramCanvas"></canvas>
+        </section>
+        
+        <!-- Playback Controls & Status -->
+        <section class="glass-card p-3 rounded-xl fade-in">
+            <div class="flex items-center space-x-3 mb-2">
+                <button id="playPauseButton" class="btn btn-primary p-2.5 rounded-full text-white shadow-lg" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" id="playPauseIcon">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div class="flex-1">
+                    <div id="currentTimeDisplay" class="text-xs text-gray-600 text-right mb-1">00:00 / 00:00</div>
+                    <div class="progress-bar-container h-1.5 rounded-lg">
+                        <div id="progressBar" class="progress-bar h-full rounded-lg" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="statusMessage" class="status-message text-center text-xs py-1.5 px-3 rounded-lg" style="display: none;"></div>
+        </section>
+
+        <!-- Dominant Frequencies -->
+        <section id="dominantFrequenciesDisplay" class="glass-card p-3 rounded-xl fade-in">
+            <h3 class="text-base font-bold text-gray-700 mb-2">📊 主导频率</h3>
+            <ul id="frequencyList" class="space-y-1.5">
+                <li class="text-gray-500 italic text-sm">等待分析...</li>
+            </ul>
+        </section>
+    </div>
+
+    <script>
+        // DOM Elements
+        const mp3Uploader = document.getElementById('mp3Uploader');
+        const playPauseButton = document.getElementById('playPauseButton');
+        const playPauseIcon = document.getElementById('playPauseIcon');
+        
+        const waveformCanvas = document.getElementById('waveformCanvas'); 
+        const spectrogramCanvas = document.getElementById('spectrogramCanvas');
+        
+        const statusMessage = document.getElementById('statusMessage');
+        const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+        const progressBarContainer = document.querySelector('.progress-bar-container');
+        const progressBar = document.getElementById('progressBar');
+        const frequencyList = document.getElementById('frequencyList'); 
+        
+        const playBirdButton = document.getElementById('playBirdButton');
+        const playDrumButton = document.getElementById('playDrumButton');
+        const playHornButton = document.getElementById('playHornButton');
+        const playVoiceButton = document.getElementById('playVoiceButton');
+        const micButton = document.getElementById('micButton');
+        const micButtonText = document.getElementById('micButtonText');
+
+        const playIconPath = "M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z";
+        const pauseIconPath = "M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 00-1 1v2a1 1 0 102 0V9a1 1 0 00-1-1zm7 0a1 1 0 00-1 1v2a1 1 0 102 0V9a1 1 0 00-1-1z";
+
+        let audioContext;
+        let audioBuffer; 
+        let sourceNode; 
+        let analyserNode;
+        let gainNode; 
+        let micStream; 
+
+        let isPlaying = false; 
+        let isMicActive = false;
+        let startTime = 0; 
+        let startOffset = 0; 
+        let animationFrameId = null; 
+
+        const waveCanvasCtx = waveformCanvas.getContext('2d'); 
+        const specCanvasCtx = spectrogramCanvas.getContext('2d'); 
+        
+        let WAVE_CANVAS_WIDTH = 0, WAVE_CANVAS_HEIGHT = 120;
+        let SPEC_CANVAS_WIDTH = 0, SPEC_CANVAS_HEIGHT = 240;
+
+        let timeDomainDataArray; 
+
+        let lastDominantFrequencies = []; // 添加变量来保存最后的频率信息
+
+        function setupCanvasDimensions() {
+            const rect = waveformCanvas.getBoundingClientRect();
+            const newWaveWidth = Math.floor(rect.width);
+            const finalWaveWidth = newWaveWidth <= 0 ? Math.min(window.innerWidth - 48, 500) : newWaveWidth;
+            
+            // 只有当尺寸真正改变时才重新设置
+            if (finalWaveWidth !== WAVE_CANVAS_WIDTH) {
+                WAVE_CANVAS_WIDTH = finalWaveWidth;
+                waveformCanvas.width = WAVE_CANVAS_WIDTH;
+                waveformCanvas.height = WAVE_CANVAS_HEIGHT;
+
+                SPEC_CANVAS_WIDTH = WAVE_CANVAS_WIDTH;
+                spectrogramCanvas.width = SPEC_CANVAS_WIDTH;
+                spectrogramCanvas.height = SPEC_CANVAS_HEIGHT;
+                
+                // 只有在没有播放或录音时才清空画布
+                if (!isPlaying && !isMicActive) {
+                    clearAllVisualizations();
+                }
+            }
+        }
+
+        async function initAudioContext() { 
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioContext.state === 'suspended') await audioContext.resume();
+                    analyserNode = audioContext.createAnalyser();
+                    analyserNode.fftSize = 2048; 
+                    analyserNode.smoothingTimeConstant = 0.8; 
+                    timeDomainDataArray = new Uint8Array(analyserNode.frequencyBinCount); 
+                    gainNode = audioContext.createGain(); 
+                    gainNode.connect(audioContext.destination); 
+                    setupCanvasDimensions(); 
+                } catch (e) {
+                    showStatus("Web Audio API 不可用", "error");
+                    return false; 
+                }
+            } else if (audioContext.state === 'suspended') {
+                 await audioContext.resume(); 
+            }
+            return true; 
+        }
+        
+        mp3Uploader.addEventListener('change', handleFileUpload);
+        playPauseButton.addEventListener('click', togglePlayPauseFile);
+        micButton.addEventListener('click', toggleMicrophone);
+
+        window.addEventListener('resize', () => { 
+            if (audioContext) { 
+                // 添加防抖延迟，避免频繁触发
+                clearTimeout(window.resizeTimeout);
+                window.resizeTimeout = setTimeout(() => {
+                    setupCanvasDimensions();
+                }, 150);
+            }
+        });
+
+        playBirdButton.addEventListener('click', async () => await loadAndPlayPresetSound(synthesizeBirdSound, "鸟鸣"));
+        playDrumButton.addEventListener('click', async () => await loadAndPlayPresetSound(synthesizeDrumSound, "鼓点"));
+        playHornButton.addEventListener('click', async () => await loadAndPlayPresetSound(synthesizeHornSound, "号角"));
+        playVoiceButton.addEventListener('click', async () => await loadAndPlayPresetSound(synthesizeVoiceSound, "人声"));
+
+        async function loadAndPlayPresetSound(synthesisFunction, soundName) {
+            if (!await initAudioContext()) return;
+            if (isMicActive) await stopMicrophone(); 
+            if (isPlaying) await stopAudioFile(); 
+            showStatus(`正在生成 ${soundName}...`, "info");
+            setControlsForPresetLoad(true); 
+            try {
+                const newBuffer = await synthesisFunction(audioContext);
+                audioBuffer = newBuffer; 
+                startOffset = 0;
+                updateCurrentTimeDisplay(0, audioBuffer.duration); 
+                updateProgressBar(0);
+                updateDominantFrequenciesDisplay([]); 
+                showStatus(`${soundName} 已准备就绪`, "info");
+                setControlsForPresetLoad(false); 
+                await playAudioFile(); 
+            } catch (error) {
+                console.error(error);
+                showStatus(`${soundName} 生成失败`, "error");
+                setControlsForPresetLoad(false); 
+                playPauseButton.disabled = true; 
+            }
+        }
+        
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('audio/')) {
+                 showStatus("请上传音频文件", "error"); 
+                 mp3Uploader.value = ''; 
+                 return;
+            }
+            if (!await initAudioContext()) return;
+            if (isMicActive) await stopMicrophone(); 
+            if (isPlaying) await stopAudioFile();
+            showStatus("正在解码音频...", "info");
+            setControlsForFileUpload(true);
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    audioBuffer = await audioContext.decodeAudioData(e.target.result);
+                    showStatus("音频加载成功", "info");
+                    startOffset = 0; 
+                    updateProgressBar(0); 
+                    updateCurrentTimeDisplay(0, audioBuffer.duration);
+                    updateDominantFrequenciesDisplay([]); 
+                    setControlsForFileUpload(false); 
+                    playPauseButton.disabled = false;
+                    updatePlayPauseButton(false); 
+                } catch (decodeError) {
+                    console.error(decodeError);
+                    showStatus("音频解码失败", "error"); 
+                    audioBuffer = null;
+                    setControlsForFileUpload(false); 
+                    playPauseButton.disabled = true;
+                }
+            };
+            reader.onerror = () => {
+                showStatus("文件读取失败", "error");
+                setControlsForFileUpload(false); 
+                playPauseButton.disabled = true;
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function togglePlayPauseFile() { 
+            if (isMicActive || !audioBuffer) {
+                showStatus(isMicActive ? "麦克风正在工作" : "请先加载音频文件", "info"); 
+                return;
+            }
+            if (!await initAudioContext()) return;
+            if (isPlaying) await pauseAudioFile(); 
+            else await playAudioFile();
+        }
+
+        async function playAudioFile() {
+            if (!audioBuffer || isMicActive) return; 
+            if (!WAVE_CANVAS_WIDTH) setupCanvasDimensions(); 
+            if (sourceNode && sourceNode.buffer) { 
+                try { sourceNode.disconnect(); } catch(e) {/*ignore*/} 
+            }
+            sourceNode = audioContext.createBufferSource(); 
+            sourceNode.buffer = audioBuffer;
+            sourceNode.connect(analyserNode); 
+            analyserNode.connect(gainNode); 
+            sourceNode.onended = handleAudioFileEnded;
+            try {
+                const offset = startOffset % audioBuffer.duration;
+                sourceNode.start(0, offset); 
+                startTime = audioContext.currentTime - offset; 
+                isPlaying = true; 
+                updatePlayPauseButton(true); 
+                showStatus("正在播放...", "info");
+                progressBarContainer.style.display = 'block'; 
+                if (!animationFrameId) animationFrameId = requestAnimationFrame(drawVisualizations);
+            } catch (e) {
+                console.error(e);
+                showStatus("播放失败", "error"); 
+                isPlaying = false; 
+                updatePlayPauseButton(false);
+            }
+        }
+
+        async function pauseAudioFile() {
+            if (!sourceNode || !isPlaying || isMicActive) return; 
+            try { sourceNode.stop(); } 
+            catch(e) { 
+                isPlaying = false; 
+                updatePlayPauseButton(false); 
+            }
+        }
+        
+        async function stopAudioFile() { 
+             if (!sourceNode || !sourceNode.buffer) return; 
+             if (isPlaying) { 
+                 sourceNode.onended = null; 
+                 try { sourceNode.stop(); } catch (e) { /* ignore */ } 
+             }
+             startOffset = 0; 
+             isPlaying = false; 
+             updatePlayPauseButton(false); 
+        }
+
+        function handleAudioFileEnded() {
+            const wasPlaying = isPlaying; 
+            const cTime = isPlaying ? (startOffset + (audioContext.currentTime - startTime)) : startOffset;
+            isPlaying = false; 
+            updatePlayPauseButton(false); 
+            if (wasPlaying && audioBuffer && cTime >= audioBuffer.duration - 0.05) { 
+                startOffset = 0; 
+                showStatus("播放完成", "info");
+                updateProgressBar(1);
+                updateCurrentTimeDisplay(audioBuffer.duration, audioBuffer.duration);
+            } else if (wasPlaying) { 
+                startOffset = cTime; 
+                showStatus("播放已暂停", "info");
+                if (audioBuffer) updateProgressBar(startOffset / audioBuffer.duration);
+            }
+        }
+
+        async function toggleMicrophone() {
+            if (!await initAudioContext()) return;
+            if (isMicActive) await stopMicrophone(); 
+            else await startMicrophone();
+        }
+
+        async function startMicrophone() {
+            if (isPlaying) await stopAudioFile(); 
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                showStatus("麦克风已连接", "info");
+                isMicActive = true; 
+                micButtonText.textContent = '停止录音'; 
+                micButton.classList.add('active');
+                setControlsForMicActive(true);
+                if (sourceNode) { 
+                    try { sourceNode.disconnect(); } catch(e) {/*ignore*/} 
+                }
+                sourceNode = audioContext.createMediaStreamSource(micStream);
+                sourceNode.connect(analyserNode); 
+                progressBarContainer.style.display = 'none'; 
+                updateCurrentTimeDisplay('--:--', '--:--'); 
+                if (!animationFrameId) animationFrameId = requestAnimationFrame(drawVisualizations);
+            } catch (err) {
+                console.error(err);
+                showStatus("麦克风访问失败", "error");
+                isMicActive = false; 
+                micButtonText.textContent = '麦克风'; 
+                micButton.classList.remove('active');
+                setControlsForMicActive(false); 
+            }
+        }
+
+        async function stopMicrophone() {
+            if (micStream) micStream.getTracks().forEach(track => track.stop()); 
+            if (sourceNode && sourceNode.mediaStream) { 
+                try { sourceNode.disconnect(); } catch(e) {/*ignore*/} 
+            }
+            isMicActive = false; 
+            micStream = null; 
+            micButtonText.textContent = '麦克风'; 
+            micButton.classList.remove('active');
+            showStatus("麦克风已断开", "info"); 
+            setControlsForMicActive(false);
+        }
+        
+        function updatePlayPauseButton(playing) {
+            playPauseIcon.setAttribute('d', playing ? pauseIconPath : playIconPath);
+        }
+
+        function setControlsForMicActive(micIsOn) {
+            mp3Uploader.disabled = micIsOn; 
+            [playBirdButton, playDrumButton, playHornButton, playVoiceButton].forEach(b=>b.disabled=micIsOn);
+            playPauseButton.disabled = micIsOn; 
+            progressBarContainer.style.display = micIsOn ? 'none' : (audioBuffer ? 'block' : 'none');
+            if (!micIsOn) playPauseButton.disabled = !audioBuffer; 
+            if (!micIsOn && !isPlaying && audioBuffer) updatePlayPauseButton(false);
+        }
+        function setControlsForFileUpload(isLoading) {
+            micButton.disabled = isLoading; 
+            [playBirdButton, playDrumButton, playHornButton, playVoiceButton].forEach(b=>b.disabled=isLoading);
+            playPauseButton.disabled = true; 
+        }
+        function setControlsForPresetLoad(isLoading) {
+            mp3Uploader.disabled = isLoading; 
+            micButton.disabled = isLoading; 
+            playPauseButton.disabled = true; 
+            [playBirdButton, playDrumButton, playHornButton, playVoiceButton].forEach(b=>b.disabled=isLoading);
+        }
+
+        async function synthesizeBirdSound(actx) {
+            const offlineCtx = new OfflineAudioContext(1, actx.sampleRate * 2, actx.sampleRate);
+            const osc = offlineCtx.createOscillator();
+            const gain = offlineCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, 0);
+            osc.frequency.exponentialRampToValueAtTime(1200, 0.1);
+            osc.frequency.exponentialRampToValueAtTime(600, 0.3);
+            
+            gain.gain.setValueAtTime(0.3, 0);
+            gain.gain.exponentialRampToValueAtTime(0.01, 2);
+            
+            osc.connect(gain);
+            gain.connect(offlineCtx.destination);
+            osc.start(0);
+            osc.stop(2);
+            
+            return await offlineCtx.startRendering();
+        }
+        
+        async function synthesizeDrumSound(actx) {
+            const offlineCtx = new OfflineAudioContext(1, actx.sampleRate * 2, actx.sampleRate);
+            const osc = offlineCtx.createOscillator();
+            const gain = offlineCtx.createGain();
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(80, 0);
+            osc.frequency.exponentialRampToValueAtTime(40, 0.5);
+            
+            gain.gain.setValueAtTime(0.5, 0);
+            gain.gain.exponentialRampToValueAtTime(0.01, 0.5);
+            
+            osc.connect(gain);
+            gain.connect(offlineCtx.destination);
+            osc.start(0);
+            osc.stop(0.5);
+            
+            return await offlineCtx.startRendering();
+        }
+        
+        async function synthesizeHornSound(actx) {
+            const duration = 2;
+            const offlineCtx = new OfflineAudioContext(1, actx.sampleRate * duration, actx.sampleRate);
+            const now = offlineCtx.currentTime;
+
+            const osc = offlineCtx.createOscillator();
+            const filter = offlineCtx.createBiquadFilter();
+            const gain = offlineCtx.createGain();
+            const lfo = offlineCtx.createOscillator(); // For vibrato
+
+            // LFO for vibrato
+            lfo.type = 'sine';
+            lfo.frequency.value = 5; // Vibrato speed
+            const lfoGain = offlineCtx.createGain();
+            lfoGain.gain.value = 3; // Vibrato depth (in Hz)
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            
+            // Main Oscillator (rich harmonics)
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, now); // A3
+
+            // Low-pass filter to make it sound more brassy
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800, now);
+            filter.Q.setValueAtTime(2, now);
+            filter.frequency.exponentialRampToValueAtTime(1200, now + duration * 0.5);
+            
+            // Gain envelope for horn-like articulation
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.5, now + 0.05); // Quick attack
+            gain.gain.setValueAtTime(0.5, now + duration - 0.5);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(offlineCtx.destination);
+
+            lfo.start(now);
+            osc.start(now);
+            osc.stop(now + duration);
+
+            return await offlineCtx.startRendering();
+        }
+        
+        async function synthesizeVoiceSound(actx) {
+            const duration = 2;
+            const offlineCtx = new OfflineAudioContext(1, actx.sampleRate * duration, actx.sampleRate);
+            const now = offlineCtx.currentTime;
+
+            // Glottal pulse source (vocal cords)
+            const source = offlineCtx.createOscillator();
+            source.type = 'sawtooth';
+            source.frequency.setValueAtTime(130, now); // Male-ish pitch
+            source.frequency.linearRampToValueAtTime(110, now + duration);
+
+            // Formant filters (simulating vocal tract)
+            const formants = [
+                // Frequencies for "ah" -> "oo"
+                { f1: 700, f2: 300, q: 20 }, // Formant 1
+                { f1: 1220, f2: 870, q: 20 }, // Formant 2
+                { f1: 2600, f2: 2240, q: 15 }  // Formant 3
+            ];
+
+            const masterGain = offlineCtx.createGain();
+            masterGain.gain.setValueAtTime(0.3, now); // Adjust overall volume
+            masterGain.connect(offlineCtx.destination);
+            
+            formants.forEach(formant => {
+                const filter = offlineCtx.createBiquadFilter();
+                const gain = offlineCtx.createGain();
+
+                filter.type = 'bandpass';
+                filter.Q.value = formant.q;
+                
+                // Vowel sound sweep from "ah" to "oo"
+                filter.frequency.setValueAtTime(formant.f1, now);
+                filter.frequency.exponentialRampToValueAtTime(formant.f2, now + duration * 0.8);
+                
+                gain.gain.value = 1.0 / formants.length; // Normalize gain
+
+                source.connect(filter);
+                filter.connect(gain);
+                gain.connect(masterGain);
+            });
+
+            source.start(now);
+            source.stop(now + duration);
+
+            return await offlineCtx.startRendering();
+        }
+
+        function drawVisualizations() {
+            animationFrameId = requestAnimationFrame(drawVisualizations);
+            if (!analyserNode || !audioContext) return; 
+            
+            const freqDataArray = new Uint8Array(analyserNode.frequencyBinCount);
+            analyserNode.getByteFrequencyData(freqDataArray);
+            analyserNode.getByteTimeDomainData(timeDomainDataArray); 
+
+            if (isPlaying || isMicActive) {
+                const freqDataWithIndices = [];
+                for (let i = 0; i < analyserNode.frequencyBinCount; i++) {
+                    freqDataWithIndices.push({ intensity: freqDataArray[i], binIndex: i });
+                }
+                freqDataWithIndices.sort((a, b) => b.intensity - a.intensity); 
+                const top5Freqs = [];
+                for (let i = 0; i < 5 && i < freqDataWithIndices.length; i++) {
+                    if (freqDataWithIndices[i].intensity > 0) {
+                        top5Freqs.push({
+                            frequency: (freqDataWithIndices[i].binIndex * audioContext.sampleRate / analyserNode.fftSize).toFixed(1),
+                            intensity: freqDataWithIndices[i].intensity 
+                        });
+                    }
+                }
+                // 保存当前的频率信息
+                if (top5Freqs.length > 0) {
+                    lastDominantFrequencies = top5Freqs;
+                }
+                updateDominantFrequenciesDisplay(top5Freqs);
+            }
+
+            if (!WAVE_CANVAS_WIDTH) setupCanvasDimensions(); 
+            
+            // 清除画布并准备绘制
+            waveCanvasCtx.save(); 
+            waveCanvasCtx.globalCompositeOperation = 'copy'; 
+            waveCanvasCtx.drawImage(waveformCanvas, -1, 0, WAVE_CANVAS_WIDTH, WAVE_CANVAS_HEIGHT); 
+            waveCanvasCtx.restore();
+            
+            specCanvasCtx.save(); 
+            specCanvasCtx.globalCompositeOperation = 'copy'; 
+            specCanvasCtx.drawImage(spectrogramCanvas, -1, 0, SPEC_CANVAS_WIDTH, SPEC_CANVAS_HEIGHT); 
+            specCanvasCtx.restore();
+
+            if (isMicActive || isPlaying) {
+                // 绘制波形
+                waveCanvasCtx.lineWidth = 2;
+                waveCanvasCtx.strokeStyle = '#60a5fa'; // bright blue
+                waveCanvasCtx.beginPath();
+                const waveYCenter = WAVE_CANVAS_HEIGHT / 2;
+                for (let i = 0; i < analyserNode.frequencyBinCount; i++) {
+                    const v = (timeDomainDataArray[i] - 128) / 128.0; 
+                    const y = waveYCenter + v * waveYCenter * 0.8;
+                    if (i === 0) waveCanvasCtx.moveTo(WAVE_CANVAS_WIDTH - 1, y);
+                    else waveCanvasCtx.lineTo(WAVE_CANVAS_WIDTH - 1, y);
+                }
+                waveCanvasCtx.stroke();
+
+                // 绘制频谱图
+                for (let i = 0; i < analyserNode.frequencyBinCount; i++) {
+                    const value = freqDataArray[i]; 
+                    const pixelHeightPerBin = SPEC_CANVAS_HEIGHT / analyserNode.frequencyBinCount;
+                    const y = SPEC_CANVAS_HEIGHT - (i + 1) * pixelHeightPerBin;
+                    specCanvasCtx.fillStyle = getColorForFrequencyValue(value); 
+                    specCanvasCtx.fillRect(SPEC_CANVAS_WIDTH - 1, y, 1, pixelHeightPerBin + 0.5); 
+                }
+                // 绘制时间线
+                specCanvasCtx.fillStyle = 'rgba(255, 255, 255, 0.5)'; 
+                specCanvasCtx.fillRect(SPEC_CANVAS_WIDTH - 1, 0, 1, SPEC_CANVAS_HEIGHT); 
+            } else {
+                 // 静止状态下清除最新的列
+                 waveCanvasCtx.fillStyle = '#1e293b'; 
+                 waveCanvasCtx.fillRect(WAVE_CANVAS_WIDTH - 1, 0, 1, WAVE_CANVAS_HEIGHT);
+                 specCanvasCtx.fillStyle = '#1e293b'; 
+                 specCanvasCtx.fillRect(SPEC_CANVAS_WIDTH - 1, 0, 1, SPEC_CANVAS_HEIGHT);
+            }
+            
+            if (isPlaying && audioBuffer) { 
+                const currentTime = startOffset + (audioContext.currentTime - startTime);
+                const progress = Math.min(currentTime / audioBuffer.duration, 1);
+                updateProgressBar(progress); 
+                updateCurrentTimeDisplay(currentTime, audioBuffer.duration);
+            }
+        }
+        
+        function clearAllVisualizations() { 
+            if (waveCanvasCtx && WAVE_CANVAS_WIDTH && WAVE_CANVAS_HEIGHT) {
+                waveCanvasCtx.fillStyle = '#1e293b'; 
+                waveCanvasCtx.fillRect(0, 0, WAVE_CANVAS_WIDTH, WAVE_CANVAS_HEIGHT);
+            }
+            if (specCanvasCtx && SPEC_CANVAS_WIDTH && SPEC_CANVAS_HEIGHT) {
+                specCanvasCtx.fillStyle = '#1e293b'; 
+                specCanvasCtx.fillRect(0, 0, SPEC_CANVAS_WIDTH, SPEC_CANVAS_HEIGHT);
+            }
+        }
+
+        function getColorForFrequencyValue(value) { 
+            const p = value / 255; 
+            let r, g, b;
+            if (p < 0.25) {
+                r = 0; 
+                g = Math.floor(255 * (p * 4)); 
+                b = 255;
+            } else if (p < 0.5) {
+                r = 0; 
+                g = 255; 
+                b = Math.floor(255 * (1 - (p - 0.25) * 4));
+            } else if (p < 0.75) {
+                r = Math.floor(255 * ((p - 0.5) * 4)); 
+                g = 255; 
+                b = 0;
+            } else {
+                r = 255; 
+                g = Math.floor(255 * (1 - (p - 0.75) * 4)); 
+                b = 0;
+            }
+            return `rgb(${r},${g},${b})`;
+        }
+
+        function showStatus(message, type = "info") {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message text-center text-sm py-2 px-4 rounded-lg status-${type}`; 
+            statusMessage.style.display = 'block';
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 3000);
+        }
+        
+        function updateProgressBar(p) { 
+            progressBar.style.width = `${Math.max(0, Math.min(p * 100, 100))}%`; 
+        }
+        
+        function formatTime(s) {
+            if (isNaN(s) || s < 0) return '--:--'; 
+            const m = Math.floor(s / 60), sc = Math.floor(s % 60);
+            return `${m.toString().padStart(2, '0')}:${sc.toString().padStart(2, '0')}`;
+        }
+        
+        function updateCurrentTimeDisplay(c, t) { 
+            currentTimeDisplay.textContent = `${formatTime(c)} / ${formatTime(t)}`; 
+        }
+        
+        function updateDominantFrequenciesDisplay(frequencies) {
+            if (!frequencyList) return;
+            
+            // 如果当前正在播放或录音，显示实时频率
+            if (frequencies.length === 0 && (isPlaying || isMicActive)) {
+                 frequencyList.innerHTML = '<li class="text-gray-500 italic text-sm">正在分析...</li>'; 
+                 return;
+            }
+            
+            // 如果没有频率数据，但有保存的最后频率信息，则显示它们
+            if (frequencies.length === 0 && lastDominantFrequencies.length > 0) {
+                frequencies = lastDominantFrequencies;
+            }
+            
+            // 如果完全没有数据，显示等待状态
+            if (frequencies.length === 0) {
+                frequencyList.innerHTML = '<li class="text-gray-500 italic text-sm">等待分析...</li>'; 
+                return;
+            }
+            
+            let html = ''; 
+            frequencies.forEach((item, i) => {
+                html += `<li class="flex justify-between items-center bg-gray-50 rounded-lg px-2.5 py-1.5">
+                    <span class="text-xs"><span class="font-bold text-blue-600">#${i+1}</span>: <span class="font-semibold text-gray-700">${item.frequency} Hz</span></span> 
+                    <span class="text-xs text-gray-500">强度: ${item.intensity}</span>
+                </li>`;
+            });
+            frequencyList.innerHTML = html;
+        }
+        
+        document.addEventListener('DOMContentLoaded', async () => { 
+            await initAudioContext(); 
+            progressBarContainer.style.display = 'none'; 
+            updateCurrentTimeDisplay(0, 0); 
+            updateDominantFrequenciesDisplay([]); 
+            playPauseButton.disabled = true; 
+            updatePlayPauseButton(false); 
+            [mp3Uploader, playBirdButton, playDrumButton, playHornButton, playVoiceButton, micButton].forEach(b=>b.disabled=false);
+            if (!animationFrameId && audioContext) {
+                animationFrameId = requestAnimationFrame(drawVisualizations);
+            }
+        });
+
+    </script>
+</body>
+</html>

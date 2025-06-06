@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单杆弯曲振动模拟 (Three.js)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #1f2937; /* Tailwind gray-800 */ color: #f3f4f6; /* Tailwind gray-100 */ }
+        #controls { position: absolute; top: 10px; left: 10px; background-color: rgba(17, 24, 39, 0.85); /* Tailwind gray-900 with opacity */ padding: 15px; border-radius: 8px; color: white; font-size: 12px; max-width: 280px; max-height: 95vh; overflow-y: auto; }
+        #controls label { display: block; margin-top: 8px; margin-bottom: 3px; font-weight: 500; }
+        #controls input[type="range"], #controls input[type="number"], #controls select { width: calc(100% - 10px); padding: 4px; border: 1px solid #4b5563; /* Tailwind gray-600 */ border-radius: 4px; background-color: #374151; /* Tailwind gray-700 */ color: white; margin-bottom: 3px; font-size: 12px; }
+        #controls .value-display { font-weight: normal; color: #9ca3af; /* Tailwind gray-400 */ margin-left: 5px; }
+        #controls button { width: 100%; padding: 6px; background-color: #3b82f6; /* Tailwind blue-500 */ color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; font-weight: 500; }
+        #controls button:hover { background-color: #2563eb; /* Tailwind blue-600 */ }
+        #plotCanvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <div>
+            <label for="rodLength">杆长 (L, m): <span id="rodLengthValue" class="value-display">1.0</span></label>
+            <input type="range" id="rodLength" min="0.2" max="3.0" step="0.1" value="1.0">
+        </div>
+        <div>
+            <label for="rodRadius">杆半径 (r, m): <span id="rodRadiusValue" class="value-display">0.02</span></label>
+            <input type="range" id="rodRadius" min="0.005" max="0.1" step="0.001" value="0.02">
+        </div>
+        <div>
+            <label for="mode">振动模态: <span id="modeValue" class="value-display">1</span></label>
+            <select id="mode">
+                <option value="1">1阶</option>
+                <option value="2">2阶</option>
+                <option value="3">3阶</option>
+                <option value="4">4阶</option>
+            </select>
+        </div>
+        <div>
+            <label for="excitationFrequency">激励频率 (ω, rad/s): <span id="excitationFrequencyValue" class="value-display">177.0</span></label>
+            <input type="range" id="excitationFrequency" min="0.1" max="1500" step="0.1" value="177.0">
+        </div>
+        <div>
+            <label for="excitationAmplitude">激励幅度 (A): <span id="excitationAmplitudeValue" class="value-display">0.1</span></label>
+            <input type="range" id="excitationAmplitude" min="0.01" max="0.5" step="0.01" value="0.1">
+        </div>
+        <div>
+            <label for="dampingRatio">阻尼比 (ζ): <span id="dampingRatioValue" class="value-display">0.02</span></label>
+            <input type="range" id="dampingRatio" min="0.001" max="0.2" step="0.001" value="0.02">
+        </div>
+        <button id="playPauseButton">播放</button>
+        <div>
+            <label for="timeScale">时间缩放: <span id="timeScaleValue" class="value-display">1.0</span></label>
+            <input type="range" id="timeScale" min="0.1" max="5.0" step="0.1" value="1.0">
+        </div>
+         <p style="margin-top:10px; font-size:11px; color:#9ca3af;">注: 某些参数组合下，若激励频率接近固有频率，振幅可能很大。</p>
+    </div>
+    <canvas id="plotCanvas"></canvas>
+
+    <script>
+        // --- Three.js 基本设置 ---
+        let scene, camera, renderer, rodMesh, originalPositions;
+        let currentTime = 0;
+        let isPlaying = true;
+        const clock = new THREE.Clock();
+
+        // --- 物理常数 (示例: 钢) ---
+        const E_modulus = 200e9;  // 杨氏模量 (Pa)
+        const density_rho = 7850; // 密度 (kg/m^3)
+
+        // --- DOM Elements ---
+        const controlsList = ['rodLength', 'rodRadius', 'mode', 'excitationFrequency', 'excitationAmplitude', 'dampingRatio', 'timeScale'];
+        const uiElements = {};
+        controlsList.forEach(id => {
+            uiElements[id] = document.getElementById(id);
+            uiElements[`${id}Value`] = document.getElementById(`${id}Value`);
+        });
+        const playPauseButton = document.getElementById('playPauseButton');
+        const canvas = document.getElementById('plotCanvas');
+
+        // --- 初始化场景 ---
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1f2937);
+
+            const aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+            camera.position.set(0.5, 1, 1.5); // Adjusted for better view of rod along Y
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            const ambientLight = new THREE.AmbientLight(0x606060);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            createRod();
+            setupEventListeners();
+            animate();
+        }
+
+        // --- 创建可变形杆件 ---
+        function createRod() {
+            if (rodMesh) scene.remove(rodMesh);
+
+            const L = parseFloat(uiElements.rodLength.value);
+            const r = parseFloat(uiElements.rodRadius.value);
+            const heightSegments = 64; // 增加分段以获得更平滑的弯曲
+
+            const geometry = new THREE.CylinderGeometry(r, r, L, 16, heightSegments);
+            geometry.translate(0, L / 2, 0); // 将基座移至原点，杆沿Y轴向上
+
+            const material = new THREE.MeshPhongMaterial({ color: 0x0077ff, shininess: 80 });
+            rodMesh = new THREE.Mesh(geometry, material);
+            scene.add(rodMesh);
+
+            // 存储原始顶点位置
+            originalPositions = geometry.attributes.position.clone();
+            camera.lookAt(0, L/2, 0); // Make camera look at center of new rod
+        }
+
+        function calculateNaturalFrequency(L, r, mode) {
+            const A_area = Math.PI * r * r;
+            const I_inertia = (Math.PI * Math.pow(r, 4)) / 4;
+
+            const lambda_n_values = [1.875, 4.694, 7.855, 10.996];
+            if (mode < 1 || mode > lambda_n_values.length) mode = 1;
+            const lambda_n = lambda_n_values[mode - 1];
+
+            const beta = lambda_n / L;
+
+            const omega_n_sqrt_term = (E_modulus * I_inertia) / (density_rho * A_area);
+            if (omega_n_sqrt_term < 0) return 0;
+            const omega_n = Math.pow(beta, 2) * Math.sqrt(omega_n_sqrt_term);
+            return omega_n;
+        }
+
+        function updateNaturalFrequency() {
+            const L = parseFloat(uiElements.rodLength.value);
+            const r = parseFloat(uiElements.rodRadius.value);
+            const mode = parseInt(uiElements.mode.value);
+            const new_omega_n = calculateNaturalFrequency(L, r, mode);
+
+            const freqSlider = uiElements.excitationFrequency;
+
+            if (new_omega_n > parseFloat(freqSlider.max)) {
+                freqSlider.max = new_omega_n * 1.2;
+            }
+
+            if (new_omega_n > 5000) {
+                freqSlider.step = 10;
+            } else if (new_omega_n > 1500) {
+                freqSlider.step = 1;
+            } else {
+                freqSlider.step = 0.1;
+            }
+
+            freqSlider.value = new_omega_n;
+            const decimals = new_omega_n < 100 ? 1 : 0;
+            uiElements.excitationFrequencyValue.textContent = new_omega_n.toFixed(decimals);
+        }
+
+        // --- 悬臂梁响应函数 (JavaScript版) ---
+        function cantileverResponse(x_pos, t, L, r, mode, excitationFreq, excitationAmp, zeta) {
+            const A_area = Math.PI * r * r; // 横截面积
+            const I_inertia = (Math.PI * Math.pow(r, 4)) / 4; // 截面惯性矩
+
+            const lambda_n_values = [1.875, 4.694, 7.855, 10.996];
+            if (mode < 1 || mode > lambda_n_values.length) mode = 1;
+            const lambda_n = lambda_n_values[mode - 1];
+
+            const beta = lambda_n / L;
+
+            const cosh_beta_x = Math.cosh(beta * x_pos);
+            const cos_beta_x = Math.cos(beta * x_pos);
+            const sinh_beta_x = Math.sinh(beta * x_pos);
+            const sin_beta_x = Math.sin(beta * x_pos);
+
+            const cosh_lambda_n = Math.cosh(lambda_n);
+            const cos_lambda_n = Math.cos(lambda_n);
+            const sinh_lambda_n = Math.sinh(lambda_n);
+            const sin_lambda_n = Math.sin(lambda_n);
+
+            let phi_factor_denominator = sinh_lambda_n + sin_lambda_n;
+            if (Math.abs(phi_factor_denominator) < 1e-9) phi_factor_denominator = 1e-9; // Avoid division by zero
+            const phi_factor = (cosh_lambda_n + cos_lambda_n) / phi_factor_denominator;
+            
+            const phi = (cosh_beta_x - cos_beta_x) - phi_factor * (sinh_beta_x - sin_beta_x);
+
+            const omega_n_sqrt_term = (E_modulus * I_inertia) / (density_rho * A_area);
+            if (omega_n_sqrt_term < 0) return 0; // Avoid sqrt of negative
+            const omega_n = Math.pow(beta, 2) * Math.sqrt(omega_n_sqrt_term);
+
+            let responseValue = 0;
+            const freq_diff_threshold = 0.1 * omega_n; // Consider it resonance if within 10% of natural frequency
+
+            // Check for resonance condition
+            if (Math.abs(excitationFreq - omega_n) < freq_diff_threshold && Math.abs(2 * zeta * omega_n) > 1e-9) { // Added check for denominator in resonance
+                responseValue = (excitationAmp / (2 * zeta * omega_n)) * phi * Math.sin(excitationFreq * t);
+            } else { // Non-resonance or if resonance denominator is too small (e.g. zeta or omega_n is zero)
+                const H_denom_sq_part1 = Math.pow(omega_n*omega_n - excitationFreq*excitationFreq, 2);
+                const H_denom_sq_part2 = Math.pow(2 * zeta * omega_n * excitationFreq, 2);
+                let H_denom = Math.sqrt(H_denom_sq_part1 + H_denom_sq_part2);
+                if (Math.abs(H_denom) < 1e-9) H_denom = 1e-9; // Avoid division by zero for H
+                const H = 1 / H_denom;
+                responseValue = excitationAmp * H * phi * Math.sin(excitationFreq * t);
+            }
+            return responseValue;
+        }
+
+        // --- 更新杆件变形 ---
+        function updateRodDeformation() {
+            const L = parseFloat(uiElements.rodLength.value);
+            const r = parseFloat(uiElements.rodRadius.value);
+            const mode = parseInt(uiElements.mode.value);
+            const excitationFreq = parseFloat(uiElements.excitationFrequency.value);
+            const excitationAmp = parseFloat(uiElements.excitationAmplitude.value);
+            const zeta = parseFloat(uiElements.dampingRatio.value);
+
+            const positions = rodMesh.geometry.attributes.position;
+            const original = originalPositions; 
+
+            for (let i = 0; i < positions.count; i++) {
+                const orig_x = original.getX(i);
+                const orig_y = original.getY(i); 
+                const orig_z = original.getZ(i);
+
+                const displacement = cantileverResponse(orig_y, currentTime, L, r, mode, excitationFreq, excitationAmp, zeta);
+                
+                positions.setX(i, orig_x + displacement);
+            }
+            positions.needsUpdate = true;
+            rodMesh.geometry.computeVertexNormals(); 
+        }
+
+        // --- 动画循环 ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const deltaTime = clock.getDelta();
+            const timeScale = parseFloat(uiElements.timeScale.value);
+
+            if (isPlaying) {
+                currentTime += deltaTime * timeScale;
+            }
+            updateRodDeformation();
+            renderer.render(scene, camera);
+        }
+
+        // --- 事件监听器 ---
+        function setupEventListeners() {
+            controlsList.forEach(id => {
+                uiElements[id].addEventListener('input', () => {
+                    // Update display value
+                    let value = parseFloat(uiElements[id].value);
+                    let decimals = 1;
+                    if (id === 'rodRadius' || id === 'dampingRatio') decimals = 3;
+                    else if (id === 'timeScale' || id === 'rodLength' || id === 'excitationAmplitude') decimals = (value < 1 && value !== 0) ? 2 : 1; // More precision for small values
+                    else if (id === 'excitationFrequency') decimals = (value < 100) ? 1 : 0;
+
+
+                    uiElements[`${id}Value`].textContent = value.toFixed(decimals);
+                    
+                    if (id === 'rodLength' || id === 'rodRadius') {
+                        createRod(); 
+                    }
+
+                    if (['rodLength', 'rodRadius', 'mode'].includes(id)) {
+                        updateNaturalFrequency();
+                    }
+                });
+                 // Initialize display value
+                let initValue = parseFloat(uiElements[id].value);
+                let initDecimals = 1;
+                if (id === 'rodRadius' || id === 'dampingRatio') initDecimals = 3;
+                else if (id === 'timeScale' || id === 'rodLength' || id === 'excitationAmplitude') initDecimals = (initValue < 1 && initValue !== 0) ? 2 : 1;
+                else if (id === 'excitationFrequency') initDecimals = (initValue < 100) ? 1 : 0;
+                 if (id === 'excitationFrequency' && uiElements[id].value === "177.0") { // Special case for default
+                    uiElements[`${id}Value`].textContent = "177.0";
+                 } else {
+                    uiElements[`${id}Value`].textContent = initValue.toFixed(initDecimals);
+                 }
+
+            });
+            playPauseButton.addEventListener('click', () => {
+                isPlaying = !isPlaying;
+                playPauseButton.textContent = isPlaying ? '暂停' : '播放';
+            });
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- 启动 ---
+        init();
+    </script>
+</body>
+</html>

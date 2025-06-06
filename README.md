@@ -1,4 +1,3 @@
-
 # 声音可视化 - 多杆件振动模拟系统
 
 ## 项目简介
@@ -105,6 +104,55 @@ npm run dev
 - **音频处理**：Web Audio API
 - **数据可视化**：Plotly.js
 - **物理计算**：自研杆件振动算法
+
+### 系统架构图
+
+```mermaid
+graph TD
+    subgraph "用户交互层"
+        User[用户]
+    end
+
+    subgraph "前端表现层 (Vue.js)"
+        direction LR
+        Controls[控制面板]
+        Visualization[3D 视图]
+        Charts[数据图表]
+    end
+
+    subgraph "数据与逻辑层"
+        subgraph "输入源"
+            AudioFile[音频文件]
+            SignalGen[正弦波/扫频]
+        end
+
+        subgraph "处理核心"
+            WebAudio[Web Audio API]
+            AudioAnalysis[音频分析算法]
+            Physics[物理计算算法]
+        end
+
+        subgraph "渲染引擎"
+            ThreeJS[Three.js]
+            PlotlyJS[Plotly.js]
+        end
+    end
+
+    User -- "操作" --> Controls
+    Controls -- "选择并加载" --> AudioFile
+    Controls -- "设置参数" --> SignalGen
+
+    AudioFile --> WebAudio
+    WebAudio -- "解码与分析" --> AudioAnalysis
+    AudioAnalysis -- "提取主导频率" --> Physics
+    SignalGen -- "提供激励频率" --> Physics
+
+    Physics -- "杆件振动数据" --> ThreeJS
+    Physics -- "响应分析数据" --> PlotlyJS
+
+    ThreeJS -- "渲染 3D 动画" --> Visualization
+    PlotlyJS -- "绘制分析图表" --> Charts
+```
 
 ## 💡 常见问题
 

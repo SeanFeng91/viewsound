@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>悬臂杆件振动响应可视化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .control-panel {
+            background-color: #f9fafb; /* Tailwind gray-50 */
+            border-radius: 0.5rem; /* Tailwind rounded-lg */
+            padding: 1.5rem; /* Tailwind p-6 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Tailwind shadow-md */
+        }
+        .control-panel label {
+            display: block;
+            margin-bottom: 0.5rem; /* Tailwind mb-2 */
+            font-weight: 500; /* Tailwind font-medium */
+            color: #374151; /* Tailwind gray-700 */
+        }
+        .control-panel input[type="range"], 
+        .control-panel input[type="number"], 
+        .control-panel select {
+            width: 100%;
+            padding: 0.5rem; /* Tailwind p-2 */
+            border: 1px solid #d1d5db; /* Tailwind gray-300 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            margin-bottom: 1rem; /* Tailwind mb-4 */
+        }
+        .control-panel input[type="range"] {
+            cursor: pointer;
+        }
+        .control-panel .value-display {
+            font-size: 0.875rem; /* Tailwind text-sm */
+            color: #4b5563; /* Tailwind gray-600 */
+            margin-left: 0.5rem;
+        }
+        .control-panel button {
+            width: 100%;
+            padding: 0.75rem; /* Tailwind p-3 */
+            background-color: #3b82f6; /* Tailwind blue-500 */
+            color: white;
+            font-weight: 500; /* Tailwind font-medium */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 0.5rem; /* Tailwind mt-2 */
+        }
+        .control-panel button:hover {
+            background-color: #2563eb; /* Tailwind blue-600 */
+        }
+        .control-panel button.playing {
+            background-color: #ef4444; /* Tailwind red-500 */
+        }
+        .control-panel button.playing:hover {
+            background-color: #dc2626; /* Tailwind red-600 */
+        }
+        .chart-container {
+            position: relative;
+            height: 60vh; /* Responsive height */
+            width: 100%;
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div class="container mx-auto max-w-5xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">悬臂杆件振动响应可视化</h1>
+            <p class="text-gray-600 mt-2">调整输入振动参数观察悬臂杆件在不同激励下的动态响应，或点击播放按钮观看动画。</p>
+        </header>
+
+        <div class="grid md:grid-cols-3 gap-6">
+            <div class="md:col-span-1 control-panel">
+                <div>
+                    <label for="time">时间 (t): <span id="timeValue" class="value-display">0.5</span></label>
+                    <input type="range" id="time" min="0" max="10" step="0.1" value="0.5">
+                </div>
+                <div>
+                    <label for="frequency">激励频率 (ω, rad/s): <span id="frequencyValue" class="value-display">5</span></label>
+                    <input type="range" id="frequency" min="0.1" max="50" step="0.1" value="5">
+                </div>
+                <div>
+                    <label for="amplitude">激励幅度: <span id="amplitudeValue" class="value-display">0.1</span></label>
+                    <input type="range" id="amplitude" min="0.01" max="1" step="0.01" value="0.1">
+                </div>
+                <div>
+                    <label for="mode">振动模态阶数: <span id="modeValue" class="value-display">1</span></label>
+                    <select id="mode">
+                        <option value="1">1阶</option>
+                        <option value="2">2阶</option>
+                        <option value="3">3阶</option>
+                        <option value="4">4阶</option>
+                    </select>
+                </div>
+                 <div>
+                    <label for="dampingRatio">阻尼比 (ζ): <span id="dampingRatioValue" class="value-display">0.02</span></label>
+                    <input type="range" id="dampingRatio" min="0.01" max="0.5" step="0.01" value="0.02">
+                </div>
+                <button id="playPauseButton">播放</button>
+            </div>
+
+            <div class="md:col-span-2 chart-container">
+                <canvas id="cantileverChart"></canvas>
+            </div>
+        </div>
+         <footer class="mt-8 text-center text-sm text-gray-500">
+            <p>关注公众号：AI光谱计划</p>
+        </footer>
+    </div>
+
+    <script>
+        // 定义物理和几何常数 (这些值需要根据实际情况调整)
+        const E = 200e9;    // 杨氏模量 (Pa) - 示例值 (钢)
+        const I = 1e-9;     // 截面惯性矩 (m^4) - 示例值
+        const rho = 7850;   // 密度 (kg/m^3) - 示例值 (钢)
+        const A = 1e-5;     // 横截面积 (m^2) - 示例值
+        const L = 1.0;      // 杆长 (m)
+
+        // 获取DOM元素
+        const timeSlider = document.getElementById('time');
+        const frequencySlider = document.getElementById('frequency');
+        const amplitudeSlider = document.getElementById('amplitude');
+        const modeSelect = document.getElementById('mode');
+        const dampingRatioSlider = document.getElementById('dampingRatio');
+        const playPauseButton = document.getElementById('playPauseButton');
+
+        const timeValueDisplay = document.getElementById('timeValue');
+        const frequencyValueDisplay = document.getElementById('frequencyValue');
+        const amplitudeValueDisplay = document.getElementById('amplitudeValue');
+        const modeValueDisplay = document.getElementById('modeValue');
+        const dampingRatioValueDisplay = document.getElementById('dampingRatioValue');
+
+        const ctx = document.getElementById('cantileverChart').getContext('2d');
+        let chart;
+        let animationInterval = null; // 用于存储setInterval的ID
+        let isPlaying = false;
+        const animationSpeed = 100; // ms per frame, 10fps
+
+        // 悬臂梁响应函数 (从Python翻译而来)
+        function cantileverResponse(x, t, frequency, amplitude, mode, zeta) {
+            // 第n阶模态的特征值
+            const lambda_n_values = [1.875, 4.694, 7.855, 10.996];
+            const lambda_n = lambda_n_values[mode - 1];
+            
+            // 模态形状函数
+            const beta = lambda_n / L;
+            const cosh_beta_x = Math.cosh(beta * x);
+            const cos_beta_x = Math.cos(beta * x);
+            const cosh_lambda_n = Math.cosh(lambda_n);
+            const cos_lambda_n = Math.cos(lambda_n);
+            const sinh_lambda_n = Math.sinh(lambda_n);
+            const sin_lambda_n = Math.sin(lambda_n);
+            const sinh_beta_x = Math.sinh(beta * x);
+            const sin_beta_x = Math.sin(beta * x);
+
+            const phi_factor = (cosh_lambda_n + cos_lambda_n) / (sinh_lambda_n + sin_lambda_n);
+            const phi = (cosh_beta_x - cos_beta_x) - phi_factor * (sinh_beta_x - sin_beta_x);
+            
+            // 固有频率 (角频率 ω_n)
+            const omega_n = Math.pow(beta, 2) * Math.sqrt((E * I) / (rho * A));
+            
+            let responseValue; 
+            // 共振响应 (假设输入的frequency是角频率 ω)
+            if (Math.abs(frequency - omega_n) < 0.1 * omega_n) {
+                responseValue = amplitude / (2 * zeta * omega_n) * phi * Math.sin(frequency * t);
+            } else {
+                // 一般频率响应
+                const H_numerator = 1;
+                const H_denominator_part1 = Math.pow(Math.pow(omega_n, 2) - Math.pow(frequency, 2), 2);
+                const H_denominator_part2 = Math.pow(2 * zeta * omega_n * frequency, 2);
+                const H = H_numerator / Math.sqrt(H_denominator_part1 + H_denominator_part2);
+                responseValue = amplitude * H * phi * Math.sin(frequency * t);
+            }
+            
+            return responseValue;
+        }
+
+        // 更新图表数据
+        function updateChart() {
+            const t = parseFloat(timeSlider.value);
+            const frequency = parseFloat(frequencySlider.value); 
+            const amplitude = parseFloat(amplitudeSlider.value);
+            const mode = parseInt(modeSelect.value);
+            const zeta = parseFloat(dampingRatioSlider.value);
+
+            // 更新显示值
+            timeValueDisplay.textContent = t.toFixed(1);
+            frequencyValueDisplay.textContent = frequency.toFixed(1);
+            amplitudeValueDisplay.textContent = amplitude.toFixed(2);
+            modeValueDisplay.textContent = mode;
+            dampingRatioValueDisplay.textContent = zeta.toFixed(2);
+
+            const numPoints = 100;
+            const x_values = Array.from({ length: numPoints }, (_, i) => (i / (numPoints - 1)) * L);
+            const y_values = x_values.map(x => cantileverResponse(x, t, frequency, amplitude, mode, zeta));
+
+            if (chart) { // 确保图表已初始化
+                chart.data.labels = x_values.map(x => x.toFixed(2));
+                chart.data.datasets[0].data = y_values;
+                chart.update();
+            }
+        }
+
+        // 播放/暂停功能
+        function togglePlayPause() {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playPauseButton.textContent = '暂停';
+                playPauseButton.classList.add('playing');
+                animationInterval = setInterval(() => {
+                    let currentTime = parseFloat(timeSlider.value);
+                    let timeStep = parseFloat(timeSlider.step);
+                    let maxTime = parseFloat(timeSlider.max);
+                    let minTime = parseFloat(timeSlider.min);
+
+                    currentTime += timeStep;
+                    if (currentTime > maxTime) {
+                        currentTime = minTime; // 循环播放
+                    }
+                    timeSlider.value = currentTime.toFixed(1); // 保持精度
+                    updateChart();
+                }, animationSpeed);
+            } else {
+                playPauseButton.textContent = '播放';
+                playPauseButton.classList.remove('playing');
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
+        }
+        
+        // 如果手动调整滑块，则暂停播放
+        function pauseIfPlaying() {
+            if (isPlaying) {
+                togglePlayPause(); 
+            }
+        }
+
+        // 初始化图表
+        function initChart() {
+            const initialX = Array.from({ length: 100 }, (_, i) => (i / 99) * L);
+            const initialY = initialX.map(() => 0); 
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: initialX.map(x => x.toFixed(2)),
+                    datasets: [{
+                        label: '悬臂杆件位移 (m)',
+                        data: initialY,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.1, 
+                        pointRadius: 0, 
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '位置 x (m)',
+                                font: { size: 14 }
+                            },
+                            ticks: {
+                                maxTicksLimit: 11 
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '位移 (m)',
+                                font: { size: 14 }
+                            },
+                            min: -0.0001, // Y轴最小值固定
+                            max: 0.0001,  // Y轴最大值固定
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toExponential(2); 
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            enabled: true,
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    animation: {
+                        duration: 0 
+                    }
+                }
+            });
+            updateChart(); // 初始绘制
+        }
+
+        // 事件监听器
+        timeSlider.addEventListener('input', () => {
+            pauseIfPlaying(); 
+            updateChart();
+        });
+        frequencySlider.addEventListener('input', () => {
+            pauseIfPlaying();
+            updateChart();
+        });
+        amplitudeSlider.addEventListener('input', () => {
+            pauseIfPlaying();
+            updateChart();
+        });
+        modeSelect.addEventListener('change', () => {
+            pauseIfPlaying();
+            updateChart();
+        });
+        dampingRatioSlider.addEventListener('input', () => {
+            pauseIfPlaying();
+            updateChart();
+        });
+        playPauseButton.addEventListener('click', togglePlayPause);
+        
+        // 页面加载完成后初始化
+        window.onload = initChart;
+    </script>
+</body>
+</html>
