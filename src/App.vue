@@ -621,7 +621,7 @@ function resetArrayConfig() {
   <div class="min-h-screen bg-gray-900 text-gray-200 flex flex-col">
     <!-- 顶部标题 -->
     <header class="p-4 text-center border-b border-gray-700">
-      <h1 class="text-3xl font-bold text-white">Digital Art: 音乐可视化——多杆件振动模拟</h1>
+      <h1 class="text-3xl font-bold text-white">ViewSound: 音乐可视化——多杆件振动模拟</h1>
       <p class="text-gray-400 text-sm pt-5">通过分析一段音频的频率，作为振动参数，驱动不同造型和材质的杆件发生共振，将音乐可视化，并生成3D可视化效果</p>
     </header>
 
